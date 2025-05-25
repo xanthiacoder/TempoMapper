@@ -184,6 +184,7 @@ music.duration = 0
 music.bars = {}
 music.tempoCurrent = 0
 music.tempoAverage = 0
+music.passage = {}
 
 -- init game data
 local game = {}
@@ -1198,6 +1199,17 @@ function love.draw()
     love.graphics.print("Average Tempo of song : " .. music.tempoAverage, 0, 16*FONT2X_HEIGHT)
   end
 
+  -- draw bars
+  love.graphics.setColor(color.brightgreen)
+  love.graphics.setLineWidth(1)
+  for i = 1,#music.bars do
+		love.graphics.line(0 + imageWidth*(music.bars[i]/music.duration) , 0 , 0 + imageWidth*(music.bars[i]/music.duration), FONT2X_HEIGHT)
+  end
+  love.graphics.setColor(color.brightyellow)
+  for i = 1,#music.passage do
+    love.graphics.line(0 + imageWidth*(music.bars[music.passage[i]]/music.duration) , 0 , 0 + imageWidth*(music.bars[music.passage[i]]/music.duration), FONT_HEIGHT)
+  end
+
 end
 
 function love.update(dt)
@@ -1281,11 +1293,16 @@ function love.keypressed(key, scancode, isrepeat)
     -- use a menu option or a click area to quit
   end
 
-  -- use Spacebar to mark bars (1st beats) and store in table music.bars
+  -- use Spacebar to mark bars in a passage (1st beats) and store in table music.bars
   if key == "space" then
     table.insert(music.bars, music.position)
   end
 
+  -- use ?? to mark the start of a new passage
+  if key == "return" then
+    table.insert(music.bars, music.position)
+    table.insert(music.passage, #music.bars)
+  end
   -- steam deck desktop mode inputs
 
   -- "escape" START or B button showing menu
@@ -1415,23 +1432,6 @@ function love.keypressed(key, scancode, isrepeat)
 
     end
 
-    -- delete char at cursor
-    if key == "space" then
-      ansiArt[game.cursory][(game.cursorx*2)-1] = color.darkgrey
-      ansiArt[game.cursory][game.cursorx*2] = " "
-      if game.cursorx > 1 then
-        -- not at the first column, shift game cursor backwards
-        game.cursorx = game.cursorx - 1
-      end
-      -- store selected in pixelArt (only works for black background)
-      love.graphics.setCanvas(pixelArt)
-      love.graphics.setFont(pixelFont)
-      love.graphics.setColor(color.black)
-      love.graphics.print("█", game.cursorx, game.cursory)
-      print("store in pixelArt.." .. game.cursorx .. "," .. game.cursory)
-      love.graphics.setCanvas()
-    end
-
   end
 
   -- input while textmode == 1
@@ -1466,25 +1466,6 @@ function love.keypressed(key, scancode, isrepeat)
       print("store in pixelArt.." .. game.cursorx .. "," .. math.ceil(game.cursory/2))
       love.graphics.setCanvas()
 
-    end
-
-    -- delete char at cursor
-    if key == "space" then
-      ansiArt[math.ceil(game.cursory/2)][(game.cursorx*2)-1] = color.darkgrey
-      ansiArt[math.ceil(game.cursory/2)][game.cursorx*2] = " "
-
-      -- store selected in pixelArt (only works for black background)
-      love.graphics.setCanvas(pixelArt)
-      love.graphics.setFont(pixelFont)
-      love.graphics.setColor(color.black)
-      love.graphics.print("█", game.cursorx, math.ceil(game.cursory/2))
-      print("store in pixelArt.." .. game.cursorx .. "," .. math.ceil(game.cursory/2))
-      love.graphics.setCanvas()
-
-      if game.cursorx > 1 then
-        -- not at the first column, shift game cursor backwards
-        game.cursorx = game.cursorx - 1
-      end
     end
 
   end
