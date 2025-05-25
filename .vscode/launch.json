@@ -6,7 +6,7 @@
       "request": "launch",
       "name": "Debug",
       "program": {
-        "command": "love"
+        "command": "/Applications/love-11.5a.app/Contents/MacOS/love"
       },
       "args": [
         "game/",
@@ -18,7 +18,7 @@
       "request": "launch",
       "name": "Release",
       "program": {
-        "command": "love"
+        "command": "/Applications/love-11.5a.app/Contents/MacOS/love"
       },
       "args": [
         "game/",

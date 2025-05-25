@@ -1,0 +1,351 @@
+-- these are code snippets taken out from for quick refactoring and backed up here in case they are needed again
+
+
+-- old keypressed code
+
+  -- input for R36S
+  if game.os == "R36S" then
+    -- W A S D for moving cursor
+    if key == "w" and game.cursory > 1 then
+      game.cursory = game.cursory - 1
+    end
+    if key == "s" and game.cursory < math.floor(game.height/8) and game.cursory < game.canvasy then
+      game.cursory = game.cursory + 1
+    end
+    if key == "a" and game.cursorx > 1 then
+      game.cursorx = game.cursorx - 1
+    end
+    if key == "d" and game.cursorx < math.floor(game.width/8) and game.cursorx < game.canvasx then
+      game.cursorx = game.cursorx + 1
+    end
+    -- (A) button to draw colored char
+    if key == "z" then
+      ansiArt[game.cursory][(game.cursorx*2)-1] = selected.color
+      ansiArt[game.cursory][game.cursorx*2] = selected.char
+    end
+    -- (B) button to clear char
+    if key == "lshift" then
+      ansiArt[game.cursory][(game.cursorx*2)-1] = color.darkgrey
+      ansiArt[game.cursory][game.cursorx*2] = " "
+    end
+    -- (X) button to eyedrop char
+    if key == "space" then
+      selected.char = ansiArt[game.cursory][game.cursorx*2]
+    end
+    -- (Y) button to eyedrop color
+    if key == "b" then
+      selected.color = ansiArt[game.cursory][(game.cursorx*2)-1]
+    end
+    -- arrow keys to select char
+    if key == "up" and game.chary > 1 then
+      game.chary = game.chary - 1
+      selected.char = charTable[game.chary][game.charx]
+    end
+    if key == "down" and game.chary < 17 then
+      game.chary = game.chary + 1
+      selected.char = charTable[game.chary][game.charx]
+    end
+    if key == "left" and game.charx > 1 then
+      game.charx = game.charx - 1
+      selected.char = charTable[game.chary][game.charx]
+    end
+    if key == "right" and game.charx < 11 then
+      game.charx = game.charx + 1
+      selected.char = charTable[game.chary][game.charx]
+    end
+    -- L1 (l) to toggle colors
+    if key == "l" then
+      if game.colorSelected == 15 then
+        game.colorSelected = 0
+      else
+        game.colorSelected = game.colorSelected + 1
+      end
+      selected.color = color[game.colorSelected]
+    end
+
+    -- R1 (r) to toggle viewports
+    if key == "r" then
+      if selected.viewport == 4 then
+        selected.viewport = 1
+      else
+        selected.viewport = selected.viewport + 1
+      end
+    end
+
+    -- Start (return) to quicksave
+    if key == "return" then
+      local files = love.filesystem.getDirectoryItems( "quicksave" )
+      saveData("quicksave_"..(#files)..".xtui","quicksave") -- running numbers for quicksaves
+    end
+
+    -- L1 (l) to toggle colors (for testing)
+    if key == "l" then
+      if game.colorSelected == 15 then
+        game.colorSelected = 0
+      else
+        game.colorSelected = game.colorSelected + 1
+      end
+      selected.color = color[game.colorSelected]
+    end
+
+  else
+    -- input for everything else (computers and steam deck)
+
+    -- arrow keys for moving Player when in game Play mode
+    if game.mode == "play" then
+
+      -- move Player Char on screen
+      if key == "up" and game.playery > 1 then
+        game.playery = game.playery - 2
+      end
+      if key == "down" and game.playery < 59 then -- 59+1 is the last y coord for screen 1
+        game.playery = game.playery + 2
+      end
+      if key == "left" and game.playerx > 1 then
+        game.playerx = game.playerx - 1
+      end
+      if key == "right" and game.playerx < 80 then -- 80 is the last x coord for screen 1
+        game.playerx = game.playerx + 1
+      end
+
+    end
+
+    -- checking game.insertMode for keyboard entry
+    if game.insertMode == false and game.mode == "edit" then
+
+      -- toggle game mode "play" , "edit"
+      if (key == "m" or key == "M") then
+        if game.mode == "play" then
+          game.mode = "edit"
+        else
+          game.mode = "play"
+        end
+      end
+
+      -- "space" to draw char (Steam Deck game mode [WASD+Mouse] : A button)
+      if key == "space" and game.textmode == 2 then
+        ansiArt[game.cursory][(game.cursorx*2)-1] = selected.color
+        ansiArt[game.cursory][game.cursorx*2] = selected.char
+      else
+        ansiArt[math.ceil(game.cursory/2)][(game.cursorx*2)-1] = selected.color
+        ansiArt[math.ceil(game.cursory/2)][game.cursorx*2] = selected.char
+      end
+
+      -- arrow keys to move cursor (Steam Deck compatibility)
+      if game.textmode == 2 then -- font size 8x8
+        if key == "up" and game.cursory > 1 then
+          game.cursory = game.cursory - 1
+        end
+        if key == "down" and game.cursory < game.canvasy then
+          game.cursory = game.cursory + 1
+        end
+        if key == "left" and game.cursorx > 1 then
+          game.cursorx = game.cursorx - 1
+        end
+        if key == "right" and game.cursorx < game.canvasx then
+          game.cursorx = game.cursorx + 1
+        end
+      else
+        -- font size 8x16
+    if key == "up" and game.cursory > 1 then
+      game.cursory = game.cursory - 2
+    end
+    if key == "down" and game.cursory < ((game.canvasy-1)*2) then
+      game.cursory = game.cursory + 2
+    end
+    if key == "left" and game.cursorx > 1 then
+      game.cursorx = game.cursorx - 1
+    end
+    if key == "right" and game.cursorx < (game.canvasx) then
+      game.cursorx = game.cursorx + 1
+    end
+      end
+
+      -- "[" / "]" to increase / decrease canvas size (x)
+      if key == "[" and game.canvasx > 1 then
+        game.canvasx = game.canvasx - 1
+        pixelArt = love.graphics.newCanvas( game.canvasx, game.canvasy )
+      end
+      if key == "]" and game.canvasx < MAX_CANVAS_X then
+        game.canvasx = game.canvasx + 1
+        pixelArt = love.graphics.newCanvas( game.canvasx, game.canvasy )
+      end
+
+      -- ";" / "'" to increase / decrease canvas size (y)
+      if key == ";" and game.canvasy > 1 then
+        game.canvasy = game.canvasy - 1
+        pixelArt = love.graphics.newCanvas( game.canvasx, game.canvasy )
+      end
+      if key == "'" and game.canvasy < MAX_CANVAS_Y then
+        game.canvasy = game.canvasy + 1
+        pixelArt = love.graphics.newCanvas( game.canvasx, game.canvasy )
+      end
+
+      -- "/" to toggle solid background color
+      if key == "/" then
+        game.bgcolorSelected = game.bgcolorSelected + 1
+        if game.bgcolorSelected == 17 then
+          game.bgcolorSelected = 0
+        end
+      end
+
+      -- clear canvas
+      if key == "c" then
+        clearCanvas()
+      end
+
+      -- toggle textmode
+      if key == "=" then
+        if selected.textmode == 2 then
+          selected.textmode = 1
+        else
+          selected.textmode = 2
+        end
+      end
+
+      if key == "i" then
+        game.insertMode = true
+      end
+
+    else
+      -- game.insertMode == true
+      if key == "escape" then
+        game.insertMode = false
+      else
+        if #key == 1 then -- single char only
+          ansiArt[game.cursory][(game.cursorx*2)-1] = selected.color
+          ansiArt[game.cursory][game.cursorx*2] = key
+        end
+        if game.cursorx < game.canvasx then -- not at canvas edge yet, can move cursorx
+          game.cursorx = game.cursorx + 1
+        end
+
+      end
+
+    end -- game.insertMode check
+
+    -- backspace to delete char
+    if key == "backspace" then
+      if game.textmode == 2 then
+        ansiArt[game.cursory][(game.cursorx*2)-1] = color.darkgrey
+        ansiArt[game.cursory][game.cursorx*2] = " "
+        if game.cursorx > 1 then
+          -- not at the first column, shift game cursor backwards
+          game.cursorx = game.cursorx - 1
+        end
+      else -- game.textmode == 1
+        -- do deletion for monoFont spacing
+      end
+    end
+    -- lalt to eyedrop char
+    if key == "lalt" then
+      selected.char = ansiArt[game.cursory][game.cursorx*2]
+    end
+    -- lctrl to eyedrop color
+    if key == "lctrl" then
+      selected.color = ansiArt[game.cursory][(game.cursorx*2)-1]
+    end
+
+    -- char selection with rshift held, and WASD for selecting
+    if love.keyboard.isDown("rshift") and game.insertMode == false then
+      -- w / s to select charTable row (game.chary)
+      if key == "w" and game.chary > 1 then
+        game.chary = game.chary - 1
+        selected.char = charTable[game.chary][game.charx]
+      end
+      if key == "s" and game.chary < 17 then
+        game.chary = game.chary + 1
+        selected.char = charTable[game.chary][game.charx]
+      end
+      -- a / d to select charTable column (game.charx)
+      if key == "a" and game.charx > 1 then
+        game.charx = game.charx - 1
+        selected.char = charTable[game.chary][game.charx]
+      end
+      if key == "d" and game.charx < 11 then
+        game.charx = game.charx + 1
+        selected.char = charTable[game.chary][game.charx]
+      end
+    end
+
+  end
+
+  -- enter to clear screen messages
+  if key == "return" and game.message ~= "" then
+    game.message = ""
+  end
+
+  if key == "f2" then
+    game.scene = "draw"
+    loadData()
+  end
+
+  if key == "f3" then
+    bmpFiles = love.filesystem.getDirectoryItems( "bmp" )
+    print(#bmpFiles.." files in bmp folder")
+    table.sort(bmpFiles)
+  end
+
+  if key == "f8" then
+    local files = love.filesystem.getDirectoryItems( "quicksave" )
+    saveData("quicksave_"..(#files)..".xtui","quicksave") -- running numbers for quicksaves
+  end
+
+  if key == "f12" then
+    -- toggle fullscreen
+      fullscreen = not fullscreen
+			love.window.setFullscreen(fullscreen, "exclusive")
+
+  end
+
+
+
+-- game data
+hover[13][7] = "chair"
+hover[13][8] = "chair legs"
+hover[28][11] = "bed"
+hover[29][11] = "bed"
+hover[28][12] = "bottom of bed"
+hover[29][12] = "bottom of bed"
+hover[29][3] = "bookshelf"
+hover[29][4] = "bookshelf"
+hover[29][5] = "bookshelf"
+hover[29][6] = "bookshelf"
+hover[8][11] = "carpet"
+hover[29][25] = "wardrobe"
+hover[29][26] = "wardrobe"
+hover[29][27] = "wardrobe"
+hover[29][28] = "wardrobe"
+hover[12][5] = "desk"
+hover[12][6] = "desk and something"
+hover[13][5] = "desk"
+hover[13][6] = "desk and something"
+hover[14][5] = "desk"
+hover[14][6] = "desk and something"
+hover[15][5] = "desk"
+hover[15][6] = "desk and something"
+hover[1][31] = "hole in the wall"
+
+click[13][7] = "This is a...chair."
+click[13][8] = "Nice! These are chair legs."
+click[28][11] = "You sleep here. zZZ, very cozy."
+click[29][11] = "You sleep here. zZZ, very cozy."
+click[28][12] = "Come on now, don't look so tense. There's no monster under the bed."
+click[29][12] = "Come on now, don't look so tense. There's no monster under the bed."
+click[29][3] = "The books on here are neatly arranged by you. Ranging from shortest to tallest, thinnest to thickest."
+click[29][4] = "There is a gap."
+click[29][5] = "The books on here are neatly arranged by you. Ranging from shortest to tallest, thinnest to thickest."
+click[29][6] = "The books on here are neatly arranged by you. Ranging from shortest to tallest, thinnest to thickest."
+click[8][11] = "The corner of the carpet is curled up."
+click[29][25] = "It's open and there's HEAPS of clothes. Uh oh, this one is messy, don't let your mom see."
+click[29][26] = "You see a part of the pile that is higher than the rest."
+click[29][27] = "Geez did you really need this much clothes?"
+click[29][28] = "It'll take FOREVER to clean this wardrobe up."
+click[12][6] = "The desk is very plain and bare except for one thing."
+click[13][6] = "The desk is very plain and bare except for one thing."
+click[14][6] = "The desk is very plain and bare except for one thing."
+click[15][6] = "The desk is very plain and bare except for one thing."
+click[1][31] = "What's this?"
+
+
+
