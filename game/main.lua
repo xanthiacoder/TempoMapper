@@ -175,8 +175,17 @@ for i = 1,160 do -- number of columns (x)
     click[i][j] = ""
   end
 end
--- enter game data
 
+
+-- init music data table
+music = {}
+music.position = 0
+music.duration = 0
+music.bars = {}
+music.tempoCurrent = 0
+music.tempoAverage = 0
+
+-- init game data
 local game = {}
 
 -- set game timers
@@ -266,15 +275,6 @@ if love.filesystem.getInfo("quicksave") == nil then
     print("Created directory - quicksave")
   end
 end
-if love.filesystem.getInfo("bmp") == nil then
-  if game.os == "R36S" then
-    os.execute("mkdir " .. love.filesystem.getSaveDirectory() .. "//bmp")
-    print("R36S: created directory - bmp")
-  else
-    love.filesystem.createDirectory("bmp")
-    print("Created directory - bmp")
-  end
-end
 if love.filesystem.getInfo("ansiart") == nil then
   if game.os == "R36S" then
     os.execute("mkdir " .. love.filesystem.getSaveDirectory() .. "//ansiart")
@@ -302,14 +302,22 @@ if love.filesystem.getInfo("wip") == nil then
     print("Created directory - wip")
   end
 end
-
-local success = love.filesystem.remove( "bmp/.DS_Store" ) -- cleanup for MacOS
-if success then
-  print("DS_Store removed from BMP")
-else
-  print("No files removed from BMP")
+if love.filesystem.getInfo("audio") == nil then
+  if game.os == "R36S" then
+    os.execute("mkdir " .. love.filesystem.getSaveDirectory() .. "//audio")
+    print("R36S: created directory - audio")
+  else
+    love.filesystem.createDirectory("audio")
+    print("Created directory - audio")
+  end
 end
-local bmpFiles = love.filesystem.getDirectoryItems( "bmp" ) -- table of files in the bmp directory
+local success = love.filesystem.remove( "audio/.DS_Store" ) -- cleanup for MacOS
+if success then
+  print("DS_Store removed from audio directory")
+else
+  print("No files removed from audio directory")
+end
+local audioFiles = love.filesystem.getDirectoryItems( "audio" ) -- table of files in the audio directory
 
 local colorpalette = {}
 
@@ -477,6 +485,34 @@ function loadData()
 end
 
 
+-- creates audio waveform image
+function generateWaveform()
+    local samples = audioData:getSampleCount()
+    local samplesPerPixel = samples / imageWidth
+    local maxAmplitude = 1
+
+    for x = 0, imageWidth - 1 do
+        local sampleIndex = math.floor(x * samplesPerPixel)
+        local sum = 0
+
+        for ch = 1, channels do
+            if ch <= audioData:getChannelCount() then
+                sum = sum + math.abs(audioData:getSample(sampleIndex, ch))
+            end
+        end
+
+        local amplitude = sum / channels
+        local y = math.floor((1 - amplitude / maxAmplitude) * imageHeight / 2)
+
+        for i = y, imageHeight - y do
+            waveData:setPixel(x, i, 1, 1, 1, 1)
+        end
+    end
+
+    waveform:replacePixels(waveData)
+end
+
+
 function love.load()
   -- Your game load here
 
@@ -497,6 +533,22 @@ function love.load()
   -- bitmap
   -- (need to set a conditional check if file exists first)
   -- bitmap = love.graphics.newImage("bmp/default.png")
+
+  -- Load the audio file for waveform display
+  local filePath = 'audio/Did You Feel the Mountains Tremble - Hillsong United.ogg'
+  audioData = love.sound.newSoundData(filePath)
+  sampleRate = audioData:getSampleRate()
+  channels = audioData:getChannelCount()
+	music.duration = audioData:getDuration()
+	-- load the audio file for playback
+	game.music = love.audio.newSource(filePath, "stream")
+	love.audio.play(game.music)
+    -- Create an image to draw the waveform
+    imageWidth, imageHeight = 640, 48
+    waveData = love.image.newImageData(imageWidth, imageHeight)
+    waveform = love.graphics.newImage(waveData)
+    -- Generate the waveform
+    generateWaveform()
 
   -- xtui screens using monoFont
   -- [scene number][screen 1,screen 2,screen 1 bgcolor, screen 2 bgcolor]
@@ -1119,6 +1171,33 @@ function love.draw()
   -- draw Player after everything else (not used now for editing)
   -- drawPlayer()
 
+	-- draw audio waveform
+  love.graphics.draw(waveform, 0, 0)
+
+  -- get music playhead position if music is playing
+	if game.music:isPlaying() then
+		music.position = game.music:tell("seconds")
+		love.graphics.setColor( 1, 0, 0) -- set red color
+		love.graphics.line(0 + imageWidth*(music.position/music.duration) , 0 , 0 + imageWidth*(music.position/music.duration), imageHeight)
+		love.graphics.setColor( 1, 1, 1) -- reset to white
+		game.tooltip = "Music position: " .. music.position
+	end
+
+  love.graphics.setFont(monoFont)
+  love.graphics.setColor(color.brightcyan)
+  love.graphics.print(game.tooltip, 0, 6*FONT2X_HEIGHT )
+  love.graphics.print("Bars: " ..#music.bars, 0, 8*FONT2X_HEIGHT)
+  if #music.bars > 1 then
+    local durationBar  = music.bars[#music.bars] - music.bars[#music.bars-1]
+    local durationBeat = durationBar / 4 -- assuming 4 beats per bar
+    music.tempoCurrent = 60 / durationBeat -- 60 secs per min
+    music.tempoAverage = 60 / ((music.bars[#music.bars] - music.bars[1]) / ((#music.bars - 1) * 4))
+    love.graphics.print("Duration of last bar  : " .. durationBar, 0, 10*FONT2X_HEIGHT)
+    love.graphics.print("Duration of one beat  : " .. durationBeat, 0, 12*FONT2X_HEIGHT)
+    love.graphics.print("Tempo of the last bar : " .. music.tempoCurrent, 0, 14*FONT2X_HEIGHT)
+    love.graphics.print("Average Tempo of song : " .. music.tempoAverage, 0, 16*FONT2X_HEIGHT)
+  end
+
 end
 
 function love.update(dt)
@@ -1200,6 +1279,11 @@ function love.keypressed(key, scancode, isrepeat)
     -- love.event.quit()
     -- with steam deck desktop mode, it's too easy to trigger "escape"
     -- use a menu option or a click area to quit
+  end
+
+  -- use Spacebar to mark bars (1st beats) and store in table music.bars
+  if key == "space" then
+    table.insert(music.bars, music.position)
   end
 
   -- steam deck desktop mode inputs
