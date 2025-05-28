@@ -62,7 +62,7 @@ Y - f
 
 ---
 
-Steam deck desktop mode
+Steam deck desktop mode (default)
 
 select - tab
 start - escape
@@ -90,7 +90,7 @@ down - down
 left - left
 right - right
 
-L1 - lctrl (toggle bitmap)
+L1 - lctrl
 L2 - right mouse click
 
 R1 - lalt (arrows - select char)
@@ -185,6 +185,9 @@ music.bars = {}
 music.tempoCurrent = 0
 music.tempoAverage = 0
 music.passage = {}
+music.beatCurrent = 0
+music.beatsPerBar = 4
+music.barTimeElapsed = 0
 
 -- init game data
 local game = {}
@@ -234,9 +237,6 @@ game.playerChar = "P"
 game.canvasx = 80
 game.canvasy = 60
 
--- init pixelArt canvas
-local pixelArt = love.graphics.newCanvas( game.canvasx, game.canvasy )
-
 -- set default char table selected [1..11][1..14]
 game.charx = 1
 game.chary = 1
@@ -245,8 +245,7 @@ game.chary = 1
 game.colorSelected = 15
 game.bgcolorSelected = 0 -- 16 is transparent, 0-15 is solid color
 
--- set showBitmap
-game.showBitmap = false
+-- set showCloseup
 game.showCloseup = false
 
 -- detect system OS
@@ -294,15 +293,6 @@ if love.filesystem.getInfo("timelapse") == nil then
     print("Created directory - timelapse")
   end
 end
-if love.filesystem.getInfo("wip") == nil then
-  if game.os == "R36S" then
-    os.execute("mkdir " .. love.filesystem.getSaveDirectory() .. "//wip")
-    print("R36S: created directory - wip")
-  else
-    love.filesystem.createDirectory("wip")
-    print("Created directory - wip")
-  end
-end
 if love.filesystem.getInfo("audio") == nil then
   if game.os == "R36S" then
     os.execute("mkdir " .. love.filesystem.getSaveDirectory() .. "//audio")
@@ -319,6 +309,24 @@ else
   print("No files removed from audio directory")
 end
 local audioFiles = love.filesystem.getDirectoryItems( "audio" ) -- table of files in the audio directory
+
+if love.filesystem.getInfo("data") == nil then
+  if game.os == "R36S" then
+    os.execute("mkdir " .. love.filesystem.getSaveDirectory() .. "//data")
+    print("R36S: created directory - data")
+  else
+    love.filesystem.createDirectory("data")
+    print("Created directory - data")
+  end
+end
+local success = love.filesystem.remove( "data/.DS_Store" ) -- cleanup for MacOS
+if success then
+  print("DS_Store removed from data directory")
+else
+  print("No files removed from data directory")
+end
+local dataFiles = love.filesystem.getDirectoryItems( "data" ) -- table of files in the data directory
+
 
 local colorpalette = {}
 
@@ -382,56 +390,15 @@ end
 
 ---@param filename string
 ---@param directory string
-function saveData( filename , directory )
+---@param data table
+function saveData( filename , directory , data )
 
-  -- initialize max ansiFlat (1D array) for compatibility
-  local ansiFlat = {}
-    for i = 1,(game.canvasy*game.canvasx)*2 do
-    ansiFlat[i] = ""
-  end
-
-  -- user temp table so as not to mess up ansiArt table
-  local ansiArtTemp = {}
-  for i = 1,game.canvasy do
-    ansiArtTemp[i] = {}
-  end
-  for i = 1,game.canvasy do
-    for j = 1,game.canvasx*2 do
-      ansiArtTemp[i][j] = ansiArt[i][j]
-    end
-  end
-  -- place \n at end of each row
-  for i = 1,game.canvasy do
-      ansiArtTemp[i][game.canvasx*2] = ansiArtTemp[i][game.canvasx*2] .. "\n"
-  end
-
-  -- create 1D from 2D array for compatibility
-  for i = 1,(game.canvasy*game.canvasx)*2 do
-    local intergal, fractional = math.modf(i/(game.canvasx*2))
-    intergal = intergal + 1
-    fractional = i%(game.canvasx*2)
-    if fractional == 0 then
-      fractional = game.canvasx*2
-      intergal = intergal - 1
-    end
---    print(intergal ..","..fractional)
-    ansiFlat[i] = ansiArtTemp[intergal][fractional]
-  end
-
-  -- save regular 2D table
+  -- save regularly
   if game.os ~= "R36S" then
-    -- save ansiart (old version dump)
---    local success, message =love.filesystem.write(directory.."/"..filename, json.encode(ansiArt))
---    if success then
---	    print ('file created: '..directory.."/"..filename)
---    else
---	    print ('file not created: '..message)
---    end
-
-  -- save ansiart (flat version)
-    local success, message =love.filesystem.write(directory.."/"..game.bgcolorSelected.."-"..filename, json.encode(ansiFlat))
+    -- save data
+    local success, message =love.filesystem.write(directory.."/"..filename, json.encode(data))
     if success then
-	    print ('file created: '..directory.."/"..game.bgcolorSelected.."-"..filename)
+	    print ('file created: '..directory.."/"..filename)
     else
       game.message = 'file not created: '..message
 	    print ('file not created: '..message)
@@ -439,11 +406,7 @@ function saveData( filename , directory )
   else
     -- save ansiart for R36S
     local f = io.open(love.filesystem.getSaveDirectory().."//"..directory.."/"..filename, "w")
-    f:write(json.encode(ansiArt))
-    f:close()
-    -- save ansiflat for R36S
-    local f = io.open(love.filesystem.getSaveDirectory().."//"..directory.."/"..filename.."flat", "w")
-    f:write(json.encode(ansiArt))
+    f:write(json.encode(data))
     f:close()
   end
 end
@@ -531,18 +494,23 @@ function love.load()
   -- print(monoFont2x:getWidth("█"))
   -- print(monoFont2x:getHeight())
 
-  -- bitmap
-  -- (need to set a conditional check if file exists first)
-  -- bitmap = love.graphics.newImage("bmp/default.png")
-
   -- Load the audio file for waveform display
-  local filePath = 'audio/Did You Feel the Mountains Tremble - Hillsong United.ogg'
-  audioData = love.sound.newSoundData(filePath)
+  fileName = 'SEVENTEEN - Sample 2.ogg'
+  fileAudio = 'audio/'.. fileName
+  fileData = 'data/'.. fileName
+  if love.filesystem.getInfo(fileData) == nil then -- data doesn't exist
+    print(fileData .. " does not exist, creating")
+    saveData(fileName, "data", music)
+  else
+    print(fileName .. " exist... will be loaded")
+    music = json.decode(love.filesystem.read(fileData))
+  end
+  audioData = love.sound.newSoundData(fileAudio)
   sampleRate = audioData:getSampleRate()
   channels = audioData:getChannelCount()
 	music.duration = audioData:getDuration()
 	-- load the audio file for playback
-	game.music = love.audio.newSource(filePath, "stream")
+	game.music = love.audio.newSource(fileAudio, "stream")
 	love.audio.play(game.music)
     -- Create an image to draw the waveform
     imageWidth, imageHeight = 640, 48
@@ -659,7 +627,6 @@ function clearCanvas()
       ansiArt[i][j*2] = " "
     end
   end
-  pixelArt = love.graphics.newCanvas( game.canvasx, game.canvasy )
 end
 
 ---@param textmode integer 1..2 (1 = 8x16, 2 = 8x8)
@@ -710,12 +677,6 @@ function drawArtCanvas(textmode, bgcolor)
     love.graphics.rectangle( "fill", 0, 0, (game.canvasx)*FONT_WIDTH, (game.canvasy)*FONT_HEIGHT)
   end
 
-  -- draw the bitmap image to be traced
-  if game.showBitmap then -- L1 (steam deck desktop) "lctrl" to toggle
-    love.graphics.setColor( color.white )
-    love.graphics.draw( bitmap, 0, 0, 0, 1, 1 ) -- rotation=0, scalex=1, scaley=1
-  end
-
   -- draw ansiArt
   love.graphics.setColor(color.white)
   for i = 1,game.canvasy do
@@ -740,218 +701,6 @@ function drawArtCanvas(textmode, bgcolor)
   else
     love.graphics.rectangle("line", 0, 0, game.canvasx*FONT_WIDTH, game.canvasy*FONT_HEIGHT)
   end
-
-end
-
-
-function drawCloseup()
-
-  love.graphics.setLineWidth(1)
-  if selected.textmode == 2 then
-    love.graphics.setFont(monoFont2x4s)
-  else
-    love.graphics.setFont(monoFont4s)
-  end
-
-  -- viewport is 80x60 (8x8px resolution for game.mousex and game.mousey)
-  if game.mousex < 40 then
-    -- cursor is on left side of viewport
-    if game.mousey < 30 then
-      -- cursor is on higher side of viewport
-      if selected.textmode == 2 then
-        love.graphics.setColor(color[game.bgcolorSelected])
-        love.graphics.rectangle("fill",639-(5*(FONT2X_WIDTH*4)), 479-(5*(FONT2X_HEIGHT*4)), 5*(FONT2X_WIDTH*4), 5*(FONT2X_HEIGHT*4))
-        love.graphics.setColor(color.brightcyan)
-        love.graphics.rectangle("line",639-(5*(FONT2X_WIDTH*4)), 479-(5*(FONT2X_HEIGHT*4)), 5*(FONT2X_WIDTH*4), 5*(FONT2X_HEIGHT*4))
-        for i = 1,5 do -- 5 preview rows
-          for j = 1,5 do -- 5 preview columns
-            if (i-3)+game.mousey > 0 and (j-3)+game.mousex > 0 and (i-3)+game.mousey <= game.canvasy and (j-3)+game.mousex <= game.canvasx then
-              love.graphics.setColor(ansiArt[(i-3)+game.mousey][(((j-3)+game.mousex)*2)-1])
-              love.graphics.print(ansiArt[(i-3)+game.mousey][((j-3)+game.mousex)*2],639-((6-j)*(FONT2X_WIDTH*4)), 479-((6-i)*(FONT2X_HEIGHT*4)))
-            end
-          end
-        end
-      else
-        love.graphics.setColor(color[game.bgcolorSelected])
-        love.graphics.rectangle("fill",639-(5*(FONT_WIDTH*4)), 479-(5*(FONT_HEIGHT*4)), 5*(FONT_WIDTH*4), 5*(FONT_HEIGHT*4))
-        love.graphics.setColor(color.brightcyan)
-        love.graphics.rectangle("line",639-(5*(FONT_WIDTH*4)), 479-(5*(FONT_HEIGHT*4)), 5*(FONT_WIDTH*4), 5*(FONT_HEIGHT*4))
-        for i = 1,5 do -- 5 preview rows
-          for j = 1,5 do -- 5 preview columns
-            if (i-3)+math.ceil(game.mousey/2) > 0 and (j-3)+game.mousex > 0 and (i-3)+math.ceil(game.mousey/2) <= game.canvasy and (j-3)+game.mousex <= game.canvasx then
-              love.graphics.setColor(ansiArt[(i-3)+math.ceil(game.mousey/2)][(((j-3)+game.mousex)*2)-1])
-              love.graphics.print(ansiArt[(i-3)+math.ceil(game.mousey/2)][((j-3)+game.mousex)*2],639-((6-j)*(FONT_WIDTH*4)), 479-((6-i)*(FONT_HEIGHT*4)))
-            end
-          end
-        end
-      end
-    else
-      -- cursor is on lower side of viewport
-      if selected.textmode == 2 then
-        love.graphics.setColor(color[game.bgcolorSelected])
-        love.graphics.rectangle("fill",639-(5*(FONT2X_WIDTH*4)), 0, 5*(FONT2X_WIDTH*4), 5*(FONT2X_HEIGHT*4))
-        love.graphics.setColor(color.brightcyan)
-        love.graphics.rectangle("line",639-(5*(FONT2X_WIDTH*4)), 0, 5*(FONT2X_WIDTH*4), 5*(FONT2X_HEIGHT*4))
-        for i = 1,5 do -- 5 preview rows
-          for j = 1,5 do -- 5 preview columns
-            if (i-3)+game.mousey > 0 and (j-3)+game.mousex > 0 and (i-3)+game.mousey <= game.canvasy and (j-3)+game.mousex <= game.canvasx then
-              love.graphics.setColor(ansiArt[(i-3)+game.mousey][(((j-3)+game.mousex)*2)-1])
-              love.graphics.print(ansiArt[(i-3)+game.mousey][((j-3)+game.mousex)*2],639-((6-j)*(FONT2X_WIDTH*4)), 0+((i-1)*(FONT2X_HEIGHT*4)))
-            end
-          end
-        end
-      else
-        love.graphics.setColor(color[game.bgcolorSelected])
-        love.graphics.rectangle("fill",639-(5*(FONT_WIDTH*4)), 0, 5*(FONT_WIDTH*4), 5*(FONT_HEIGHT*4))
-        love.graphics.setColor(color.brightcyan)
-        love.graphics.rectangle("line",639-(5*(FONT_WIDTH*4)), 0, 5*(FONT_WIDTH*4), 5*(FONT_HEIGHT*4))
-        for i = 1,5 do -- 5 preview rows
-          for j = 1,5 do -- 5 preview columns
-            if (i-3)+math.ceil(game.mousey/2) > 0 and (j-3)+game.mousex > 0 and (i-3)+math.ceil(game.mousey/2) <= game.canvasy and (j-3)+game.mousex <= game.canvasx then
-              love.graphics.setColor(ansiArt[(i-3)+math.ceil(game.mousey/2)][(((j-3)+game.mousex)*2)-1])
-              love.graphics.print(ansiArt[(i-3)+math.ceil(game.mousey/2)][((j-3)+game.mousex)*2],639-((6-j)*(FONT_WIDTH*4)), 0+((i-1)*(FONT_HEIGHT*4)))
-            end
-          end
-        end
-      end
-    end
-  else
-  -- cursor is on right side of viewport
-    if game.mousey < 30 then
-      -- cursor is on higher side of viewport
-      if selected.textmode == 2 then
-        love.graphics.setColor(color[game.bgcolorSelected])
-        love.graphics.rectangle("fill",0, 479-(5*(FONT2X_HEIGHT*4)), 5*(FONT2X_WIDTH*4), 5*(FONT2X_HEIGHT*4))
-        love.graphics.setColor(color.brightcyan)
-        love.graphics.rectangle("line",0, 479-(5*(FONT2X_HEIGHT*4)), 5*(FONT2X_WIDTH*4), 5*(FONT2X_HEIGHT*4))
-        for i = 1,5 do -- 5 preview rows
-          for j = 1,5 do -- 5 preview columns
-            if (i-3)+game.mousey > 0 and (j-3)+game.mousex > 0 and (i-3)+game.mousey <= game.canvasy and (j-3)+game.mousex <= game.canvasx then
-              love.graphics.setColor(ansiArt[(i-3)+game.mousey][(((j-3)+game.mousex)*2)-1])
-              love.graphics.print(ansiArt[(i-3)+game.mousey][((j-3)+game.mousex)*2],0+((j-1)*(FONT2X_WIDTH*4)), 479-((6-i)*(FONT2X_HEIGHT*4)))
-            end
-          end
-        end
-      else
-        love.graphics.setColor(color[game.bgcolorSelected])
-        love.graphics.rectangle("fill",0, 479-(5*(FONT_HEIGHT*4)), 5*(FONT_WIDTH*4), 5*(FONT_HEIGHT*4))
-        love.graphics.setColor(color.brightcyan)
-        love.graphics.rectangle("line",0, 479-(5*(FONT_HEIGHT*4)), 5*(FONT_WIDTH*4), 5*(FONT_HEIGHT*4))
-        for i = 1,5 do -- 5 preview rows
-          for j = 1,5 do -- 5 preview columns
-            if (i-3)+math.ceil(game.mousey/2) > 0 and (j-3)+game.mousex > 0 and (i-3)+math.ceil(game.mousey/2) <= game.canvasy and (j-3)+game.mousex <= game.canvasx then
-              love.graphics.setColor(ansiArt[(i-3)+math.ceil(game.mousey/2)][(((j-3)+game.mousex)*2)-1])
-              love.graphics.print(ansiArt[(i-3)+math.ceil(game.mousey/2)][((j-3)+game.mousex)*2],0+((j-1)*(FONT_WIDTH*4)), 479-((6-i)*(FONT_HEIGHT*4)))
-            end
-          end
-        end
-      end
-    else
-      -- cursor is on lower side of viewport
-      if selected.textmode == 2 then
-        love.graphics.setColor(color[game.bgcolorSelected])
-        love.graphics.rectangle("fill",0, 0, 5*(FONT2X_WIDTH*4), 5*(FONT2X_HEIGHT*4))
-        love.graphics.setColor(color.brightcyan)
-        love.graphics.rectangle("line",0, 0, 5*(FONT2X_WIDTH*4), 5*(FONT2X_HEIGHT*4))
-        for i = 1,5 do -- 5 preview rows
-          for j = 1,5 do -- 5 preview columns
-            if (i-3)+game.mousey > 0 and (j-3)+game.mousex > 0 and (i-3)+game.mousey <= game.canvasy and (j-3)+game.mousex <= game.canvasx then
-              love.graphics.setColor(ansiArt[(i-3)+game.mousey][(((j-3)+game.mousex)*2)-1])
-              love.graphics.print(ansiArt[(i-3)+game.mousey][((j-3)+game.mousex)*2],0+((j-1)*(FONT2X_WIDTH*4)), 0+((i-1)*(FONT2X_HEIGHT*4)))
-            end
-          end
-        end
-      else
-        love.graphics.setColor(color[game.bgcolorSelected])
-        love.graphics.rectangle("fill",0, 0, 5*(FONT_WIDTH*4), 5*(FONT_HEIGHT*4))
-        love.graphics.setColor(color.brightcyan)
-        love.graphics.rectangle("line",0, 0, 5*(FONT_WIDTH*4), 5*(FONT_HEIGHT*4))
-        for i = 1,5 do -- 5 preview rows
-          for j = 1,5 do -- 5 preview columns
-            if (i-3)+math.ceil(game.mousey/2) > 0 and (j-3)+game.mousex > 0 and (i-3)+math.ceil(game.mousey/2) <= game.canvasy and (j-3)+game.mousex <= game.canvasx then
-              love.graphics.setColor(ansiArt[(i-3)+math.ceil(game.mousey/2)][(((j-3)+game.mousex)*2)-1])
-              love.graphics.print(ansiArt[(i-3)+math.ceil(game.mousey/2)][((j-3)+game.mousex)*2],0+((j-1)*(FONT_WIDTH*4)), 0+((i-1)*(FONT_HEIGHT*4)))
-            end
-          end
-        end
-      end
-    end
-  end
-end
-
-
----@param x integer column using monoFont width FONT_WIDTH
----@param y integer row using monoFont height FONT_HEIGHT
-function drawBrushes( x, y )
-
-  -- this part is drawing Palette
-  love.graphics.setFont(monoFont)
-  love.graphics.setColor(color.white)
-  love.graphics.print("Foreground", (x+28)*FONT_WIDTH ,(y+2)*FONT_HEIGHT)
-  love.graphics.print("Background", (x+46)*FONT_WIDTH ,(y+2)*FONT_HEIGHT)
-
-  love.graphics.setColor(color[game.bgcolorSelected])
-  love.graphics.print("██\n██", (x+43)*FONT_WIDTH ,(y+1)*FONT_HEIGHT)
-
-  -- draw background first
-  love.graphics.setLineWidth(1)
-  love.graphics.rectangle("fill", (x+25)*FONT_WIDTH ,(y+4)*FONT_HEIGHT, 16*FONT_WIDTH, 4*FONT_HEIGHT)
-  love.graphics.rectangle("fill", (x+43)*FONT_WIDTH ,(y+4)*FONT_HEIGHT, 16*FONT_WIDTH, 4*FONT_HEIGHT)
-  love.graphics.rectangle("fill", (x+2)*FONT_WIDTH,(y+1)*FONT_HEIGHT, 2*FONT_WIDTH, 2*FONT_HEIGHT)
-  love.graphics.rectangle("fill", 82*FONT_WIDTH,4*FONT_HEIGHT, 21*FONT_WIDTH, 17*FONT_HEIGHT)
-  love.graphics.rectangle("fill", (x+25)*FONT_WIDTH ,(y+11)*FONT_HEIGHT, 16*FONT_WIDTH, 4*FONT_HEIGHT)
-  love.graphics.rectangle("fill", (x+43)*FONT_WIDTH ,(y+11)*FONT_HEIGHT, 16*FONT_WIDTH, 4*FONT_HEIGHT)
-
-  -- draw brush
-  love.graphics.setFont(monoFont2s)
-  love.graphics.setColor(selected.color)
-  love.graphics.print(selected.char,(x+2)*FONT_WIDTH,(y+1)*FONT_HEIGHT)
-  love.graphics.setFont(monoFont)
-  love.graphics.setColor(color.white)
-  love.graphics.print("Brush", (x+5)*FONT_WIDTH ,(y+2)*FONT_HEIGHT)
-  love.graphics.print("Custom  Palette", (x+35)*FONT_WIDTH ,(y+9)*FONT_HEIGHT)
-  love.graphics.print(" Color  mixer", (x+35)*FONT_WIDTH ,(y+16)*FONT_HEIGHT)
-
-  drawCharTable( 82*FONT_WIDTH, 4*FONT_HEIGHT )
-
-  -- draw foreground color
-  love.graphics.setColor(selected.color)
-  love.graphics.print("██\n██", (x+25)*FONT_WIDTH ,(y+1)*FONT_HEIGHT)
-
-  love.graphics.setColor(color[8])
-  love.graphics.print("██\n▓▓\n▒▒\n░░", (x+25)*FONT_WIDTH ,(y+4)*FONT_HEIGHT)
-  love.graphics.setColor(color[9])
-  love.graphics.print("██\n▓▓\n▒▒\n░░", (x+27)*FONT_WIDTH ,(y+4)*FONT_HEIGHT)
-  love.graphics.setColor(color[10])
-  love.graphics.print("██\n▓▓\n▒▒\n░░", (x+29)*FONT_WIDTH ,(y+4)*FONT_HEIGHT)
-  love.graphics.setColor(color[11])
-  love.graphics.print("██\n▓▓\n▒▒\n░░", (x+31)*FONT_WIDTH ,(y+4)*FONT_HEIGHT)
-  love.graphics.setColor(color[12])
-  love.graphics.print("██\n▓▓\n▒▒\n░░", (x+33)*FONT_WIDTH ,(y+4)*FONT_HEIGHT)
-  love.graphics.setColor(color[13])
-  love.graphics.print("██\n▓▓\n▒▒\n░░", (x+35)*FONT_WIDTH ,(y+4)*FONT_HEIGHT)
-  love.graphics.setColor(color[14])
-  love.graphics.print("██\n▓▓\n▒▒\n░░", (x+37)*FONT_WIDTH ,(y+4)*FONT_HEIGHT)
-  love.graphics.setColor(color[15])
-  love.graphics.print("██\n▓▓\n▒▒\n░░", (x+39)*FONT_WIDTH ,(y+4)*FONT_HEIGHT)
-
-  love.graphics.setColor(color[0])
-  love.graphics.print("██\n▓▓\n▒▒\n░░", (x+43)*FONT_WIDTH ,(y+4)*FONT_HEIGHT)
-  love.graphics.setColor(color[1])
-  love.graphics.print("██\n▓▓\n▒▒\n░░", (x+45)*FONT_WIDTH ,(y+4)*FONT_HEIGHT)
-  love.graphics.setColor(color[2])
-  love.graphics.print("██\n▓▓\n▒▒\n░░", (x+47)*FONT_WIDTH ,(y+4)*FONT_HEIGHT)
-  love.graphics.setColor(color[3])
-  love.graphics.print("██\n▓▓\n▒▒\n░░", (x+49)*FONT_WIDTH ,(y+4)*FONT_HEIGHT)
-  love.graphics.setColor(color[4])
-  love.graphics.print("██\n▓▓\n▒▒\n░░", (x+51)*FONT_WIDTH ,(y+4)*FONT_HEIGHT)
-  love.graphics.setColor(color[5])
-  love.graphics.print("██\n▓▓\n▒▒\n░░", (x+53)*FONT_WIDTH ,(y+4)*FONT_HEIGHT)
-  love.graphics.setColor(color[6])
-  love.graphics.print("██\n▓▓\n▒▒\n░░", (x+55)*FONT_WIDTH ,(y+4)*FONT_HEIGHT)
-  love.graphics.setColor(color[7])
-  love.graphics.print("██\n▓▓\n▒▒\n░░", (x+57)*FONT_WIDTH ,(y+4)*FONT_HEIGHT)
-
 
 end
 
@@ -1074,9 +823,6 @@ function love.draw()
 --    love.graphics.print(screen2["drawmode"],640, 0)
 --  end
 
-  -- draw brushes
-  drawBrushes( 80, 0)
-
   -- draw cursor
   love.graphics.setColor( color.pulsingwhite )
   love.graphics.setLineWidth(1)
@@ -1118,17 +864,8 @@ function love.draw()
     end
   end
 
-  -- draw cursor closeup
-  if game.showCloseup then
-    drawCloseup()
-  end
-
   -- draw buttons
   drawButtons()
-
-  -- draw pixelArt canvas
-  love.graphics.draw(pixelArt, (game.canvasx+2)*FONT2X_WIDTH, 0)
-
 
   -- draw hover and click items during "play" mode
   -- draw hover shadow first
@@ -1150,11 +887,6 @@ function love.draw()
   -- draw pointer
   love.graphics.setColor(color.white)
   love.graphics.draw(pointer, love.mouse.getX(), love.mouse.getY())
-
-
-  if selected.menuRow ~= 0 then
-    drawMenu()
-  end
 
   if game.scene == "title" then
     -- draw full screens last
@@ -1210,10 +942,34 @@ function love.draw()
     love.graphics.line(0 + imageWidth*(music.bars[music.passage[i]]/music.duration) , 0 , 0 + imageWidth*(music.bars[music.passage[i]]/music.duration), FONT_HEIGHT)
   end
 
+  -- draw beats per bar when music is playing, and there is an average tempo calculated
+  if music.barTimeElapsed ~= 0 and music.tempoAverage ~= 0 then
+    if music.barTimeElapsed > 3*(60/music.tempoAverage) then
+      love.graphics.print(music.barTimeElapsed .. "\nCurrent beat in bar   : 1 ... 2 ... 3 ... 4 ...", 0, 18*FONT2X_HEIGHT)
+    elseif music.barTimeElapsed > 2*(60/music.tempoAverage) then
+      love.graphics.print(music.barTimeElapsed .. "\nCurrent beat in bar   : 1 ... 2 ... 3 ...", 0, 18*FONT2X_HEIGHT)
+    elseif music.barTimeElapsed > 1*(60/music.tempoAverage) then
+      love.graphics.print(music.barTimeElapsed .. "\nCurrent beat in bar   : 1 ... 2 ...", 0, 18*FONT2X_HEIGHT)
+    else
+      love.graphics.print(music.barTimeElapsed .. "\nCurrent beat in bar   : 1 ...", 0, 18*FONT2X_HEIGHT)
+    end
+  end
+
+  -- draw last so that it is on top of everything
+  if selected.menuRow ~= 0 then
+    drawMenu()
+  end
+
 end
 
 function love.update(dt)
   -- Your game update here
+
+  if game.music:isPlaying() then
+    music.barTimeElapsed = music.barTimeElapsed + dt
+  else
+    music.barTimeElapsed = 0
+  end
 
   -- mouse button detections
   if love.mouse.isDown(1) and selected.textmode == 2 and game.mode == "edit" then
@@ -1224,13 +980,6 @@ function love.update(dt)
       -- store selected in ansiArt
       ansiArt[game.mousey][(game.mousex*2)-1] = selected.color
       ansiArt[game.mousey][game.mousex*2] = selected.char
-      -- store selected in pixelArt
-      love.graphics.setCanvas(pixelArt)
-      love.graphics.setFont(pixelFont)
-      love.graphics.setColor(selected.color)
-      love.graphics.print(selected.char, game.mousex, game.mousey)
-      print("store in pixelArt.." .. game.mousex .. "," .. game.mousey)
-      love.graphics.setCanvas()
     end
   end
 
@@ -1269,8 +1018,8 @@ function love.update(dt)
   if math.ceil(game.timeThisSession)%60 == 0 and game.autosaveCooldown == 0 then
     -- every 60 seconds
     game.autosaveCooldown = 3 -- 3 seconds cooldown
-    local files = love.filesystem.getDirectoryItems( "autosave" )
-    saveData("autosave_"..(#files)..".xtui","autosave") -- running numbers for quicksaves
+--    local files = love.filesystem.getDirectoryItems( "autosave" )
+--    saveData("autosave_"..(#files)..".xtui","autosave") -- running numbers for quicksaves
   end
 
   -- set statusbar
@@ -1294,8 +1043,11 @@ function love.keypressed(key, scancode, isrepeat)
   end
 
   -- use Spacebar to mark bars in a passage (1st beats) and store in table music.bars
-  if key == "space" then
+  if key == "space" and game.music:isPlaying() then
+    music.beatCurrent = 1
+    music.barTimeElapsed = 0
     table.insert(music.bars, music.position)
+    saveData(fileName, "data", music) -- autosave changes
   end
 
   -- use ?? to mark the start of a new passage
@@ -1309,15 +1061,6 @@ function love.keypressed(key, scancode, isrepeat)
   if key == "escape" then
     selected.menuRow = 1
     selected.menuOption = 2
-  end
-
-  -- "lctrl" button L1 to toggle showing bitmap
-  if key == "lctrl" then
-    if game.showBitmap then
-      game.showBitmap = false
-    else
-      game.showBitmap = true
-    end
   end
 
   -- move menu selection after escape is pressed
@@ -1421,15 +1164,6 @@ function love.keypressed(key, scancode, isrepeat)
     if key == "return" and game.message == "" then
       ansiArt[game.cursory][(game.cursorx*2)-1] = selected.color
       ansiArt[game.cursory][game.cursorx*2] = selected.char
-
-      -- store selected in pixelArt
-      love.graphics.setCanvas(pixelArt)
-      love.graphics.setFont(pixelFont)
-      love.graphics.setColor(selected.color)
-      love.graphics.print(selected.char, game.cursorx, game.cursory)
-      print("store in pixelArt.." .. game.cursorx .. "," .. game.cursory)
-      love.graphics.setCanvas()
-
     end
 
   end
@@ -1457,15 +1191,6 @@ function love.keypressed(key, scancode, isrepeat)
     if key == "return" and game.message == "" then
       ansiArt[math.ceil(game.cursory/2)][(game.cursorx*2)-1] = selected.color
       ansiArt[math.ceil(game.cursory/2)][game.cursorx*2] = selected.char
-
-      -- store selected in pixelArt
-      love.graphics.setCanvas(pixelArt)
-      love.graphics.setFont(pixelFont)
-      love.graphics.setColor(selected.color)
-      love.graphics.print(selected.char, game.cursorx, math.ceil(game.cursory/2))
-      print("store in pixelArt.." .. game.cursorx .. "," .. math.ceil(game.cursory/2))
-      love.graphics.setCanvas()
-
     end
 
   end
