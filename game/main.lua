@@ -192,6 +192,9 @@ music.barTimeElapsed = 0
 -- init game data
 local game = {}
 
+-- init game help
+game.inputTips = "" -- to display contextual help for inputs
+
 -- set game timers
 game.timeThisSession = 0
 game.autosaveCooldown = 0
@@ -208,7 +211,7 @@ game.messageViewport = 1
 game.mode = "edit"
 
 -- set game scene
-game.scene = "drawing" -- anything but "title" to prevent showing the title screens
+game.scene = "TempoMapper" -- anything but "title" to prevent showing the title screens
 
 -- set game script
 game.script = ""
@@ -511,7 +514,6 @@ function love.load()
 	music.duration = audioData:getDuration()
 	-- load the audio file for playback
 	game.music = love.audio.newSource(fileAudio, "stream")
-	love.audio.play(game.music)
     -- Create an image to draw the waveform
     imageWidth, imageHeight = 640, 48
     waveData = love.image.newImageData(imageWidth, imageHeight)
@@ -773,19 +775,10 @@ function love.draw()
       love.graphics.translate( -640, -480 )
     end
 
-  -- draw tooltip
-  local tooltip = "? - clear canvas\n"
-  tooltip = tooltip .. "= - toggle textmode "..selected.textmode.."\n"
-  tooltip = tooltip .. "? - change between play and edit mode\n"
-  tooltip = tooltip .. "R4 + D-Pad - change canvas width "..game.canvasx.."\n"
-  tooltip = tooltip .. "R4 + D-Pad - change canvas height "..game.canvasy.."\n"
-  tooltip = tooltip .. "? - change background color "..game.bgcolorSelected.."\n"
-  tooltip = tooltip .. "R1 + D-Pad - select char\n"
-  tooltip = tooltip .. "L4 - quicksave\n"
-  tooltip = tooltip .. "? - quit\n"
+  -- draw game.inputTips
   love.graphics.setFont(monoFont)
   love.graphics.setColor(color.white)
-  love.graphics.printf(tooltip, 640+(40*FONT_WIDTH), (29-8)*FONT_HEIGHT, 320, "left")
+  love.graphics.printf(game.inputTips, 640+(1*FONT_WIDTH), (29-28)*FONT_HEIGHT, 320, "left")
 
 
   -- render the ansiArt area
@@ -907,14 +900,13 @@ function love.draw()
 	-- draw audio waveform
   love.graphics.draw(waveform, 0, 0)
 
-  -- get music playhead position if music is playing
-	if game.music:isPlaying() then
-		music.position = game.music:tell("seconds")
-		love.graphics.setColor( 1, 0, 0) -- set red color
-		love.graphics.line(0 + imageWidth*(music.position/music.duration) , 0 , 0 + imageWidth*(music.position/music.duration), imageHeight)
-		love.graphics.setColor( 1, 1, 1) -- reset to white
-		game.tooltip = "Music position: " .. music.position
-	end
+
+  -- draw music playhead position
+  game.tooltip = "Music position: " .. music.position
+	music.position = game.music:tell("seconds")
+	love.graphics.setColor( 1, 0, 0) -- set red color
+	love.graphics.line(0 + imageWidth*(music.position/music.duration) , 0 , 0 + imageWidth*(music.position/music.duration), imageHeight)
+	love.graphics.setColor( 1, 1, 1) -- reset to white
 
   love.graphics.setFont(monoFont)
   love.graphics.setColor(color.brightcyan)
@@ -1035,26 +1027,75 @@ function love.update(dt)
 end
 
 function love.keypressed(key, scancode, isrepeat)
+
+  -- Inputs for "TempoMapper"
+  if game.scene == "TempoMapper" then
+    game.inputTips = "" -- init inputTips
+
+    -- use Spacebar to mark bars in a passage (1st beats) and store in table music.bars
+    game.inputTips = game.inputTips .. "space : mark the 1st beat of a bar\n"
+    if key == "space" and game.music:isPlaying() then
+      music.beatCurrent = 1
+      music.barTimeElapsed = 0
+      table.insert(music.bars, music.position)
+      saveData(fileName, "data", music) -- autosave changes
+    end
+
+    -- "W" to clear music.bars
+    game.inputTips = game.inputTips .. "w : clear music bars data\n"
+    if key == "w" then
+      music.bars = {}
+    end
+    -- "S" to quit app
+    game.inputTips = game.inputTips .. "s : start or pause music\n"
+    if key == "s" then
+      if game.music:isPlaying() then
+        game.music:pause()
+      else
+        game.music:play()
+      end
+    end
+    -- "A" to quit app
+    game.inputTips = game.inputTips .. "a : move back 2 seconds\n"
+    if key == "a" then
+      if music.position - 2 >= 0 then
+        music.position = music.position - 2
+        game.music:seek(music.position)
+      else
+        music.position = 0
+        game.music:seek(music.position)
+      end
+    end
+    -- "D" to quit app
+    game.inputTips = game.inputTips .. "d : move forward 2 seconds\n"
+    if key == "d" then
+      if music.position + 2 <= game.music:getDuration() then
+        music.position = music.position + 2
+        game.music:seek(music.position)
+      else
+        music.position = game.music:getDuration()
+        game.music:seek(music.position)
+      end
+    end
+
+
+    -- "escape" to quit app
+    game.inputTips = game.inputTips .. "esc : quit the app\n"
+    if key == "escape" then
+      love.event.quit()
+    end
+
+  end
+
   print("key:"..key.." scancode:"..scancode.." isrepeat:"..tostring(isrepeat))
+
   if key == "escape" and love.system.getOS() ~= "Web" and game.insertMode == false then
     -- love.event.quit()
     -- with steam deck desktop mode, it's too easy to trigger "escape"
     -- use a menu option or a click area to quit
   end
 
-  -- use Spacebar to mark bars in a passage (1st beats) and store in table music.bars
-  if key == "space" and game.music:isPlaying() then
-    music.beatCurrent = 1
-    music.barTimeElapsed = 0
-    table.insert(music.bars, music.position)
-    saveData(fileName, "data", music) -- autosave changes
-  end
 
-  -- use ?? to mark the start of a new passage
-  if key == "return" then
-    table.insert(music.bars, music.position)
-    table.insert(music.passage, #music.bars)
-  end
   -- steam deck desktop mode inputs
 
   -- "escape" START or B button showing menu
