@@ -188,6 +188,8 @@ music.passage = {}
 music.beatCurrent = 0
 music.beatsPerBar = 4
 music.barTimeElapsed = 0
+music.barFirst = 0 -- first beat of FIRST BAR of the song
+music.barLast = 0 -- first beat of LAST BAR of the song
 
 -- init game data
 local game = {}
@@ -498,7 +500,7 @@ function love.load()
   -- print(monoFont2x:getHeight())
 
   -- Load the audio file for waveform display
-  fileName = 'SEVENTEEN - Sample 2.ogg'
+  fileName = 'Here Again - Elevation Worship.ogg'
   fileAudio = 'audio/'.. fileName
   fileData = 'data/'.. fileName
   if love.filesystem.getInfo(fileData) == nil then -- data doesn't exist
@@ -934,6 +936,21 @@ function love.draw()
     love.graphics.line(0 + imageWidth*(music.bars[music.passage[i]]/music.duration) , 0 , 0 + imageWidth*(music.bars[music.passage[i]]/music.duration), FONT_HEIGHT)
   end
 
+  -- draw 1st bar, calculated bars based on average tempo
+  love.graphics.setColor(color.brightyellow)
+  love.graphics.line(0 + imageWidth*(music.barFirst/music.duration) , 5*FONT2X_HEIGHT , 0 + imageWidth*(music.barFirst/music.duration), 6*FONT2X_HEIGHT)
+  love.graphics.setColor(color.brightcyan)
+
+  local barsInSong = (math.floor((game.music:getDuration() - music.barFirst) / ((60/music.tempoAverage)*music.beatsPerBar)))
+  -- game.music:getDuration() - music.barFirst = (duration of song left to map)
+  -- duration of 1 bar = (60/music.tempoAverage)*music.beatsPerBar
+  -- number of bars in song = math.floor((game.music:getDuration() - music.barFirst) / ((60/music.tempoAverage)*music.beatsPerBar))
+  if music.tempoAverage ~= 0 then
+    for i = 1, barsInSong do
+      love.graphics.line((imageWidth*(music.barFirst/music.duration))+(imageWidth*((i*(((60/music.tempoAverage)*music.beatsPerBar)/music.duration)))), 5*FONT2X_HEIGHT , (imageWidth*(music.barFirst/music.duration))+(imageWidth*((i*(((60/music.tempoAverage)*music.beatsPerBar)/music.duration)))), 6*FONT2X_HEIGHT)
+    end
+  end
+
   -- draw beats per bar when music is playing, and there is an average tempo calculated
   if music.barTimeElapsed ~= 0 and music.tempoAverage ~= 0 then
     if music.barTimeElapsed > 3*(60/music.tempoAverage) then
@@ -1035,22 +1052,34 @@ function love.keypressed(key, scancode, isrepeat)
     -- use Spacebar to mark bars in a passage (1st beats) and store in table music.bars
     game.inputTips = game.inputTips .. "space : mark the 1st beat of a bar\n"
     if key == "space" and game.music:isPlaying() then
+      if music.barFirst == 0 then
+        -- first beat entry, assume 1st beat of 1st bar
+        music.barFirst = music.position
+      elseif music.position < music.barFirst then
+        -- earlier bar entry detected, update music.barFirst
+        music.barFirst = music.position
+      end
+      table.insert(music.bars, music.position)
       music.beatCurrent = 1
       music.barTimeElapsed = 0
-      table.insert(music.bars, music.position)
-      saveData(fileName, "data", music) -- autosave changes
     end
 
     -- "W" to clear music.bars
     game.inputTips = game.inputTips .. "w : clear music bars data\n"
     if key == "w" then
       music.bars = {}
+      music.tempoAverage = 0
+      music.tempoCurrent = 0
+      music.barFirst = 0
+      music.barLast = 0
     end
     -- "S" to quit app
     game.inputTips = game.inputTips .. "s : start or pause music\n"
     if key == "s" then
       if game.music:isPlaying() then
         game.music:pause()
+        table.sort(music.bars) -- sort bars before saving
+        saveData(fileName, "data", music) -- autosave changes
       else
         game.music:play()
       end
