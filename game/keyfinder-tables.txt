@@ -1,0 +1,172 @@
+MAJOR SCALES
+
+A  = a  b  c+ d  e  f+ g+
+B- = b- c  d  e- f  g  a
+B  = b  c+ d+ e  f+ g+ a+
+C  = c  d  e  f  g  a  b
+D- = d- e- f  g- a- b- c
+D  = d  e  f+ g  a  b  c+
+E- = e- f  g  a- b- c  d
+E  = e  f+ g+ a  b  c+ d+
+F  = f  g  a  b- c  d  e
+F+ = f+ g+ a+ b  c+ d+ e+ <-- special condition e+
+G- = g- a- b- c- d- e- f  <-- special condition c-
+G  = g  a  b  c  d  e  f+
+A- = a- b- c  d- e- f  g
+
+A  = a  b  c+ d  e  f+ g+
+B- = a  b- c  d  e- f  g
+B  = a+ b  c+ d+ e  f+ g+
+C  = a  b  c  d  e  f  g 
+D- = a- b- c  d- e- f  g- 
+D  = a  b  c+ d  e  f+ g  
+E- = a- b- c  d  e- f  g  
+E  = a  b  c+ d+ e  f+ g+ 
+F  = a  b- c  d  e  f  g  
+F+ = a+ b  c+ d+ e+ f+ g+ <-- special condition e+
+G- = a- b- c- d- e- f  g- <-- special condition c-
+G  = a  b  c  d  e  f+ g  
+A- = a- b- c  d- e- f  g
+
+
+SHORTLISTS by Notes
+
+a     = A  A+ C  D  E  F  G
+a+/b- = G+ A+ B  C+ D+ F  F+
+c-/b  = A  B  C  D  E  G  F+
+c     = G+ A+ C  C+ D+ F  G   
+c+/d- = G+ A  B  D  C+ E  F+
+d     = A  A+ C  D  D+ F  G  
+d+/e- = G+ A+ B  C+ D+ E  F+
+e     = A  B  C  D  E  F  G
+e+/f  = G+ A+ C  C+ D+ F  F+ 
+f+/g- = A  B  D  C+ E  G  F+
+g     = G+ A+ C  D  D+ F  G  
+a-/g+ = A  G+ B  C+ E  D+ F+
+
+
+note  | C  C+ D  D+ E  F  F+ G  G+ A  A+ B
+============================================
+a       ■  ░  ■  ░  ■  ■  ░  ■  ░  ■  ■  ░
+a+/b-   ░  ■  ░  ■  ░  ■  ■  ░  ■  ░  ■  ■
+c-/b    ■  ░  ■  ░  ■  ░  ■  ■  ░  ■  ░  ■
+c       ■  ■  ░  ■  ░  ■  ░  ■  ■  ░  ■  ░
+c+/d-   ░  ■  ■  ░  ■  ░  ■  ░  ■  ■  ░  ■
+d       ■  ░  ■  ■  ░  ■  ░  ■  ░  ■  ■  ░
+d+/e-   ░  ■  ░  ■  ■  ░  ■  ░  ■  ░  ■  ■
+e       ■  ░  ■  ░  ■  ■  ░  ■  ░  ■  ░  ■
+e+/f    ■  ■  ░  ■  ░  ■  ■  ░  ■  ░  ■  ░
+f+/g-   ░  ■  ■  ░  ■  ░  ■  ■  ░  ■  ░  ■
+g       ■  ░  ■  ■  ░  ■  ░  ■  ■  ░  ■  ░
+a-/g+   ░  ■  ░  ■  ■  ░  ■  ░  ■  ■  ░  ■
+
+
+A  = a  b  c+ d  e  f+ g+
+B- = a  b- c  d  e- f  g
+C  = a  b  c  d  e  f  g 
+D  = a  b  c+ d  e  f+ g  
+E  = a  b  c+ d+ e  f+ g+ 
+F  = a  b- c  d  e  f  g  
+G  = a  b  c  d  e  f+ g  
+B  = a+ b  c+ d+ e  f+ g+
+F+ = a+ b  c+ d+ e+ f+ g+ <-- special condition e+
+D- = a- b- c  d- e- f  g- 
+E- = a- b- c  d  e- f  g  
+G- = a- b- c- d- e- f  g- <-- special condition c-
+A- = a- b- c  d- e- f  g
+
+
+
+B- = a  b- c  d  e- f  g
+C  = a  b  c  d  e  f  g 
+D  = a  b  c+ d  e  f+ g  
+E- = a- b- c  d  e- f  g  
+F  = a  b- c  d  e  f  g  
+G  = a  b  c  d  e  f+ g  
+A- = a- b- c  d- e- f  g
+A  = a  b  c+ d  e  f+ g+
+B  = a+ b  c+ d+ e  f+ g+
+E  = a  b  c+ d+ e  f+ g+ 
+F+ = a+ b  c+ d+ e+ f+ g+ <-- special condition e+
+D- = a- b- c  d- e- f  g- 
+G- = a- b- c- d- e- f  g- <-- special condition c-
+
+
+
+
+B- = a  b- c  d  e- f  g
+C  = a  b  c  d  e  f  g 
+D- = a- b- c  d- e- f  g- 
+E- = a- b- c  d  e- f  g  
+F  = a  b- c  d  e  f  g  
+G- = a- b- c- d- e- f  g- <-- special condition c-
+A- = a- b- c  d- e- f  g
+A  = a  b  c+ d  e  f+ g+
+B  = a+ b  c+ d+ e  f+ g+
+D  = a  b  c+ d  e  f+ g  
+E  = a  b  c+ d+ e  f+ g+ 
+F+ = a+ b  c+ d+ e+ f+ g+ <-- special condition e+
+G  = a  b  c  d  e  f+ g  
+
+
+
+
+A  = a  b  c+ d  e  f+ g+
+B  = a+ b  c+ d+ e  f+ g+
+C  = a  b  c  d  e  f  g 
+D  = a  b  c+ d  e  f+ g  
+E  = a  b  c+ d+ e  f+ g+ 
+F  = a  b- c  d  e  f  g  
+G  = a  b  c  d  e  f+ g  
+A- = a- b- c  d- e- f  g
+B- = a  b- c  d  e- f  g
+D- = a- b- c  d- e- f  g- 
+E- = a- b- c  d  e- f  g  
+G- = a- b- c- d- e- f  g- <-- special condition c-
+F+ = a+ b  c+ d+ e+ f+ g+ <-- special condition e+
+
+
+
+
+A  = a  b  c+ d  e  f+ g+
+B- = a  b- c  d  e- f  g
+C  = a  b  c  d  e  f  g 
+D  = a  b  c+ d  e  f+ g  
+E- = a- b- c  d  e- f  g  
+F  = a  b- c  d  e  f  g  
+G  = a  b  c  d  e  f+ g  
+B  = a+ b  c+ d+ e  f+ g+
+E  = a  b  c+ d+ e  f+ g+ 
+F+ = a+ b  c+ d+ e+ f+ g+ <-- special condition e+
+D- = a- b- c  d- e- f  g- 
+G- = a- b- c- d- e- f  g- <-- special condition c-
+A- = a- b- c  d- e- f  g
+
+
+B- = a  b- c  d  e- f  g
+C  = a  b  c  d  e  f  g 
+D- = a- b- c  d- e- f  g- 
+E- = a- b- c  d  e- f  g  
+F  = a  b- c  d  e  f  g  
+G  = a  b  c  d  e  f+ g  
+A- = a- b- c  d- e- f  g
+A  = a  b  c+ d  e  f+ g+
+B  = a+ b  c+ d+ e  f+ g+
+D  = a  b  c+ d  e  f+ g  
+E  = a  b  c+ d+ e  f+ g+ 
+F+ = a+ b  c+ d+ e+ f+ g+ <-- special condition e+
+G- = a- b- c- d- e- f  g- <-- special condition c-
+
+A  = a  b  c+ d  e  f+ g+
+B  = a+ b  c+ d+ e  f+ g+
+C  = a  b  c  d  e  f  g 
+D  = a  b  c+ d  e  f+ g  
+E  = a  b  c+ d+ e  f+ g+ 
+G  = a  b  c  d  e  f+ g  
+F+ = a+ b  c+ d+ e+ f+ g+ <-- special condition e+
+G- = a- b- c- d- e- f  g- <-- special condition c-
+A- = a- b- c  d- e- f  g
+B- = a  b- c  d  e- f  g
+D- = a- b- c  d- e- f  g- 
+E- = a- b- c  d  e- f  g  
+F  = a  b- c  d  e  f  g  

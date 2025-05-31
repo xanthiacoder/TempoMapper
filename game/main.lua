@@ -104,6 +104,24 @@ R5 - pagedown
 
 ]]
 
+--[[ Major Scales
+
+A  = a  b  c+ d  e  f+ g+
+B- = b- c  d  e- f  g  a
+B  = b  c+ d+ e  f+ g+ a+
+C  = c  d  e  f  g  a  b
+D- = d- e- f  g- a- b- c
+D  = d  e  f+ g  a  b  c+
+E- = e- f  g  a- b- c  d
+E  = e  f+ g+ a  b  c+ d+
+F  = f  g  a  b- c  d  e
+F+ = f+ g+ a+ b  c+ d+ e+ <-- special condition e+ (f)
+G- = g- a- b- c- d- e- f  <-- special condition c- (b)
+G  = g  a  b  c  d  e  f+
+A- = a- b- c  d- e- f  g
+
+]]
+
 love.filesystem.setIdentity("TempoMapper") -- for R36S file system compatibility
 love.mouse.setVisible( false ) -- make mouse cursor invis, use bitmap cursor
 love.graphics.setDefaultFilter("nearest", "nearest") -- for nearest neighbour, pixelart style
@@ -175,21 +193,6 @@ for i = 1,160 do -- number of columns (x)
     click[i][j] = ""
   end
 end
-
-
--- init music data table
-music = {}
-music.position = 0
-music.duration = 0
-music.bars = {}
-music.tempoCurrent = 0
-music.tempoAverage = 0
-music.passage = {}
-music.beatCurrent = 0
-music.beatsPerBar = 4
-music.barTimeElapsed = 0
-music.barFirst = 0 -- first beat of FIRST BAR of the song
-music.barLast = 0 -- first beat of LAST BAR of the song
 
 -- init game data
 local game = {}
@@ -332,6 +335,118 @@ else
 end
 local dataFiles = love.filesystem.getDirectoryItems( "data" ) -- table of files in the data directory
 
+---@param filename string
+---@param directory string
+---@param data table
+function saveData( filename , directory , data )
+
+  -- save regularly
+  if game.os ~= "R36S" then
+    -- save data
+    local success, message =love.filesystem.write(directory.."/"..filename, json.encode(data))
+    if success then
+	    print ('file created: '..directory.."/"..filename)
+    else
+      game.message = 'file not created: '..message
+	    print ('file not created: '..message)
+    end
+  else
+    -- save ansiart for R36S
+    local f = io.open(love.filesystem.getSaveDirectory().."//"..directory.."/"..filename, "w")
+    f:write(json.encode(data))
+    f:close()
+  end
+end
+
+
+-- init music data table
+music = {}
+
+function initMusic()
+
+  music.position = 0
+  music.duration = 0
+  music.bars = {}
+  music.tempoCurrent = 0
+  music.tempoAverage = 0
+  music.passage = {}
+  music.beatCurrent = 0
+  music.beatsPerBar = 4
+  music.barTimeElapsed = 0
+  music.barFirst = 0 -- first beat of FIRST BAR of the song
+  music.barLast = 0 -- first beat of LAST BAR of the song
+  music.waveform = nil
+  music.waveData = nil
+  music.audioData = nil
+  music.sampleRate = nil
+  music.channels = nil
+  music.filename = ""
+end
+
+initMusic()
+
+
+
+
+-- creates audio waveform image
+function generateWaveform(imageWidth,imageHeight)
+    local samples = music.audioData:getSampleCount()
+    local samplesPerPixel = samples / imageWidth
+    local maxAmplitude = 1
+
+    for x = 0, imageWidth - 1 do
+        local sampleIndex = math.floor(x * samplesPerPixel)
+        local sum = 0
+
+        for ch = 1, music.channels do
+            if ch <= music.audioData:getChannelCount() then
+                sum = sum + math.abs(music.audioData:getSample(sampleIndex, ch))
+            end
+        end
+
+        local amplitude = sum / music.channels
+        local y = math.floor((1 - amplitude / maxAmplitude) * imageHeight / 2)
+
+        for i = y, imageHeight - y do
+            music.waveData:setPixel(x, i, 1, 1, 1, 1)
+        end
+    end
+
+    music.waveform:replacePixels(music.waveData)
+end
+
+
+function loadSong(fileName)
+  -- Load the audio file for waveform display
+  -- local fileAudio = 'audio/'.. fileName
+  local fileData = 'data/'.. fileName
+  if love.filesystem.getInfo(fileData) == nil then -- data doesn't exist
+    print(fileData .. " does not exist, creating")
+    -- saveData(fileName, "data", music) -- need to patch up filename
+  else
+    print(fileName .. " exist... will be loaded")
+    -- music = json.decode(love.filesystem.read(fileData)) -- need to patch up filename
+  end
+  music.audioData = love.sound.newSoundData(fileName)
+  music.sampleRate = music.audioData:getSampleRate()
+  music.channels = music.audioData:getChannelCount()
+	music.duration = music.audioData:getDuration()
+	-- load the audio file for playback
+	game.music = love.audio.newSource(fileName, "stream")
+    -- Create an image to draw the waveform
+    imageWidth, imageHeight = 640, 48
+    music.waveData = love.image.newImageData(imageWidth, imageHeight)
+    music.waveform = love.graphics.newImage(music.waveData)
+    -- Generate the waveform
+    generateWaveform(imageWidth,imageHeight)
+
+end
+
+-- hardcode music filename for testing
+music.filename = "audio/SEVENTEEN - Sample 2.ogg"
+loadSong(music.filename)
+
+
 
 local colorpalette = {}
 
@@ -393,29 +508,6 @@ function drawCharTable( x, y)
 
 end
 
----@param filename string
----@param directory string
----@param data table
-function saveData( filename , directory , data )
-
-  -- save regularly
-  if game.os ~= "R36S" then
-    -- save data
-    local success, message =love.filesystem.write(directory.."/"..filename, json.encode(data))
-    if success then
-	    print ('file created: '..directory.."/"..filename)
-    else
-      game.message = 'file not created: '..message
-	    print ('file not created: '..message)
-    end
-  else
-    -- save ansiart for R36S
-    local f = io.open(love.filesystem.getSaveDirectory().."//"..directory.."/"..filename, "w")
-    f:write(json.encode(data))
-    f:close()
-  end
-end
-
 
 function loadData()
   local tempArt = json.decode(love.filesystem.read("wip/data.xtui")) -- manually set background
@@ -454,36 +546,26 @@ function loadData()
 end
 
 
--- creates audio waveform image
-function generateWaveform()
-    local samples = audioData:getSampleCount()
-    local samplesPerPixel = samples / imageWidth
-    local maxAmplitude = 1
-
-    for x = 0, imageWidth - 1 do
-        local sampleIndex = math.floor(x * samplesPerPixel)
-        local sum = 0
-
-        for ch = 1, channels do
-            if ch <= audioData:getChannelCount() then
-                sum = sum + math.abs(audioData:getSample(sampleIndex, ch))
-            end
-        end
-
-        local amplitude = sum / channels
-        local y = math.floor((1 - amplitude / maxAmplitude) * imageHeight / 2)
-
-        for i = y, imageHeight - y do
-            waveData:setPixel(x, i, 1, 1, 1, 1)
-        end
-    end
-
-    waveform:replacePixels(waveData)
-end
-
 
 function love.load()
   -- Your game load here
+
+  -- piano
+  piano = {
+    [28] = love.audio.newSource("samples/piano28.ogg", "static"),
+	  [29] = love.audio.newSource("samples/piano29.ogg", "static"),
+	  [30] = love.audio.newSource("samples/piano30.ogg", "static"),
+	  [31] = love.audio.newSource("samples/piano31.ogg", "static"),
+	  [32] = love.audio.newSource("samples/piano32.ogg", "static"),
+	  [33] = love.audio.newSource("samples/piano33.ogg", "static"),
+	  [34] = love.audio.newSource("samples/piano34.ogg", "static"),
+	  [35] = love.audio.newSource("samples/piano35.ogg", "static"),
+	  [36] = love.audio.newSource("samples/piano36.ogg", "static"),
+	  [37] = love.audio.newSource("samples/piano37.ogg", "static"),
+	  [38] = love.audio.newSource("samples/piano38.ogg", "static"),
+	  [39] = love.audio.newSource("samples/piano39.ogg", "static"),
+	  [40] = love.audio.newSource("samples/piano40.ogg", "static"),
+  }
 
   -- fonts
   monoFont = love.graphics.newFont("fonts/"..FONT, FONT_SIZE)
@@ -499,31 +581,11 @@ function love.load()
   -- print(monoFont2x:getWidth("█"))
   -- print(monoFont2x:getHeight())
 
-  -- Load the audio file for waveform display
-  fileName = 'Here Again - Elevation Worship.ogg'
-  fileAudio = 'audio/'.. fileName
-  fileData = 'data/'.. fileName
-  if love.filesystem.getInfo(fileData) == nil then -- data doesn't exist
-    print(fileData .. " does not exist, creating")
-    saveData(fileName, "data", music)
-  else
-    print(fileName .. " exist... will be loaded")
-    music = json.decode(love.filesystem.read(fileData))
-  end
-  audioData = love.sound.newSoundData(fileAudio)
-  sampleRate = audioData:getSampleRate()
-  channels = audioData:getChannelCount()
-	music.duration = audioData:getDuration()
-	-- load the audio file for playback
-	game.music = love.audio.newSource(fileAudio, "stream")
-    -- Create an image to draw the waveform
-    imageWidth, imageHeight = 640, 48
-    waveData = love.image.newImageData(imageWidth, imageHeight)
-    waveform = love.graphics.newImage(waveData)
-    -- Generate the waveform
-    generateWaveform()
 
   -- xtui screens using monoFont
+  xtui = {}
+  xtui["piano-13"] = json.decode(love.filesystem.read("ansiart/0-piano-13keys.xtui"))
+
   -- [scene number][screen 1,screen 2,screen 1 bgcolor, screen 2 bgcolor]
   screen = {}
   screen[1] = {
@@ -900,29 +962,27 @@ function love.draw()
   -- drawPlayer()
 
 	-- draw audio waveform
-  love.graphics.draw(waveform, 0, 0)
+  love.graphics.draw(music.waveform, 0, 0)
 
 
   -- draw music playhead position
-  game.tooltip = "Music position: " .. music.position
+  game.tooltip = "Filename: " .. music.filename .. "\nMusic position: " .. music.position
 	music.position = game.music:tell("seconds")
 	love.graphics.setColor( 1, 0, 0) -- set red color
 	love.graphics.line(0 + imageWidth*(music.position/music.duration) , 0 , 0 + imageWidth*(music.position/music.duration), imageHeight)
 	love.graphics.setColor( 1, 1, 1) -- reset to white
 
+  -- visualising beats in a bar (needs tidying up)
   love.graphics.setFont(monoFont)
   love.graphics.setColor(color.brightcyan)
   love.graphics.print(game.tooltip, 0, 6*FONT2X_HEIGHT )
-  love.graphics.print("Bars: " ..#music.bars, 0, 8*FONT2X_HEIGHT)
+  love.graphics.print("Bars: " ..#music.bars, 0, 10*FONT2X_HEIGHT)
   if #music.bars > 1 then
     local durationBar  = music.bars[#music.bars] - music.bars[#music.bars-1]
     local durationBeat = durationBar / 4 -- assuming 4 beats per bar
     music.tempoCurrent = 60 / durationBeat -- 60 secs per min
     music.tempoAverage = 60 / ((music.bars[#music.bars] - music.bars[1]) / ((#music.bars - 1) * 4))
-    love.graphics.print("Duration of last bar  : " .. durationBar, 0, 10*FONT2X_HEIGHT)
-    love.graphics.print("Duration of one beat  : " .. durationBeat, 0, 12*FONT2X_HEIGHT)
-    love.graphics.print("Tempo of the last bar : " .. music.tempoCurrent, 0, 14*FONT2X_HEIGHT)
-    love.graphics.print("Average Tempo of song : " .. music.tempoAverage, 0, 16*FONT2X_HEIGHT)
+    love.graphics.print("Tempo: " .. music.tempoAverage, 0, 12*FONT2X_HEIGHT)
   end
 
   -- draw bars
@@ -951,18 +1011,24 @@ function love.draw()
     end
   end
 
-  -- draw beats per bar when music is playing, and there is an average tempo calculated
-  if music.barTimeElapsed ~= 0 and music.tempoAverage ~= 0 then
-    if music.barTimeElapsed > 3*(60/music.tempoAverage) then
-      love.graphics.print(music.barTimeElapsed .. "\nCurrent beat in bar   : 1 ... 2 ... 3 ... 4 ...", 0, 18*FONT2X_HEIGHT)
-    elseif music.barTimeElapsed > 2*(60/music.tempoAverage) then
-      love.graphics.print(music.barTimeElapsed .. "\nCurrent beat in bar   : 1 ... 2 ... 3 ...", 0, 18*FONT2X_HEIGHT)
-    elseif music.barTimeElapsed > 1*(60/music.tempoAverage) then
-      love.graphics.print(music.barTimeElapsed .. "\nCurrent beat in bar   : 1 ... 2 ...", 0, 18*FONT2X_HEIGHT)
-    else
-      love.graphics.print(music.barTimeElapsed .. "\nCurrent beat in bar   : 1 ...", 0, 18*FONT2X_HEIGHT)
-    end
-  end
+  -- draw beats per bar when music is playing, and there is an average tempo calculated (need patching)
+--  if music.barTimeElapsed ~= 0 and music.tempoAverage ~= 0 then
+--    if music.barTimeElapsed > 3*(60/music.tempoAverage) then
+--      love.graphics.print(music.barTimeElapsed .. "\nCurrent beat in bar   : 1 ... 2 ... 3 ... 4 ...", 0, 12*FONT2X_HEIGHT)
+--    elseif music.barTimeElapsed > 2*(60/music.tempoAverage) then
+--      love.graphics.print(music.barTimeElapsed .. "\nCurrent beat in bar   : 1 ... 2 ... 3 ...", 0, 12*FONT2X_HEIGHT)
+--    elseif music.barTimeElapsed > 1*(60/music.tempoAverage) then
+--      love.graphics.print(music.barTimeElapsed .. "\nCurrent beat in bar   : 1 ... 2 ...", 0, 12*FONT2X_HEIGHT)
+--    else
+--      love.graphics.print(music.barTimeElapsed .. "\nCurrent beat in bar   : 1 ...", 0, 12*FONT2X_HEIGHT)
+--    end
+--  end
+
+  -- draw Piano 13 keys
+  love.graphics.setFont(monoFont)
+  love.graphics.setColor(color.white)
+  love.graphics.print(xtui["piano-13"], 0, 10*FONT_HEIGHT)
+
 
   -- draw last so that it is on top of everything
   if selected.menuRow ~= 0 then
@@ -1079,7 +1145,7 @@ function love.keypressed(key, scancode, isrepeat)
       if game.music:isPlaying() then
         game.music:pause()
         table.sort(music.bars) -- sort bars before saving
-        saveData(fileName, "data", music) -- autosave changes
+      --  saveData(fileName, "data", music) -- need to patch the filename part
       else
         game.music:play()
       end
@@ -1107,6 +1173,102 @@ function love.keypressed(key, scancode, isrepeat)
       end
     end
 
+    -- "Up" to play piano note 28
+    game.inputTips = game.inputTips .. "Up : Play note - C\n"
+    if key == "up" then
+      if piano[28]:isPlaying() then
+        piano[28]:stop()
+      end
+      piano[28]:play()
+    end
+    -- "Left" to play piano note 29
+    game.inputTips = game.inputTips .. "Left : Play note - C#\n"
+    if key == "left" then
+      if piano[29]:isPlaying() then
+        piano[29]:stop()
+      end
+      piano[29]:play()
+    end
+    -- "Down" to play piano note 30
+    game.inputTips = game.inputTips .. "Down : Play note - D\n"
+    if key == "down" then
+      if piano[30]:isPlaying() then
+        piano[30]:stop()
+      end
+      piano[30]:play()
+    end
+    -- "Right" to play piano note 31
+    game.inputTips = game.inputTips .. "Right : Play note - D#\n"
+    if key == "right" then
+      if piano[31]:isPlaying() then
+        piano[31]:stop()
+      end
+      piano[31]:play()
+    end
+    -- "T" to play piano note 32
+    game.inputTips = game.inputTips .. "T : Play note - E\n"
+    if key == "t" then
+      if piano[32]:isPlaying() then
+        piano[32]:stop()
+      end
+      piano[32]:play()
+    end
+    -- "F" to play piano note 33
+    game.inputTips = game.inputTips .. "F : Play note - F\n"
+    if key == "f" then
+      if piano[33]:isPlaying() then
+        piano[33]:stop()
+      end
+      piano[33]:play()
+    end
+    -- "G" to play piano note 34
+    game.inputTips = game.inputTips .. "G : Play note - F#\n"
+    if key == "g" then
+      if piano[34]:isPlaying() then
+        piano[34]:stop()
+      end
+      piano[34]:play()
+    end
+    -- "H" to play piano note 35
+    game.inputTips = game.inputTips .. "H : Play note - G\n"
+    if key == "h" then
+      if piano[35]:isPlaying() then
+        piano[35]:stop()
+      end
+      piano[35]:play()
+    end
+    -- "I" to play piano note 36
+    game.inputTips = game.inputTips .. "I : Play note - G#\n"
+    if key == "i" then
+      if piano[36]:isPlaying() then
+        piano[36]:stop()
+      end
+      piano[36]:play()
+    end
+    -- "J" to play piano note 37
+    game.inputTips = game.inputTips .. "J : Play note - A\n"
+    if key == "j" then
+      if piano[37]:isPlaying() then
+        piano[37]:stop()
+      end
+      piano[37]:play()
+    end
+    -- "K" to play piano note 38
+    game.inputTips = game.inputTips .. "K : Play note - A#\n"
+    if key == "k" then
+      if piano[38]:isPlaying() then
+        piano[38]:stop()
+      end
+      piano[38]:play()
+    end
+    -- "L" to play piano note 39
+    game.inputTips = game.inputTips .. "L : Play note - B\n"
+    if key == "l" then
+      if piano[39]:isPlaying() then
+        piano[39]:stop()
+      end
+      piano[39]:play()
+    end
 
     -- "escape" to quit app
     game.inputTips = game.inputTips .. "esc : quit the app\n"
@@ -1363,6 +1525,31 @@ end
 
 function love.touchpressed(id, x, y, dx, dy, pressure)
 end
+
+
+function love.filedropped(file)
+  if file then
+    initMusic()
+    music.filename = file:getFilename()
+    file:open("r")
+    local fileData = file:read("data")
+    music.audioData = love.sound.newSoundData(fileData)
+    music.sampleRate = music.audioData:getSampleRate()
+    music.channels = music.audioData:getChannelCount()
+	  music.duration = music.audioData:getDuration()
+	  -- load the audio file for playback
+	  game.music = love.audio.newSource(music.audioData, "stream")
+    -- Create an image to draw the waveform
+    imageWidth, imageHeight = 640, 48
+    music.waveData = love.image.newImageData(imageWidth, imageHeight)
+    music.waveform = love.graphics.newImage(music.waveData)
+    -- Generate the waveform
+    generateWaveform(imageWidth,imageHeight)
+
+    file:close()
+  end
+end
+
 
 --[[ To-Dos
   * export to PNG
