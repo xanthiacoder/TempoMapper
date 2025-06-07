@@ -360,27 +360,27 @@ end
 
 
 -- init music data table
-music = {}
+local music = {}
 
 function initMusic()
 
-  music.position = 0
-  music.duration = 0
-  music.bars = {}
-  music.tempoCurrent = 0
-  music.tempoAverage = 0
-  music.passage = {}
-  music.beatCurrent = 0
-  music.beatsPerBar = 4
-  music.barTimeElapsed = 0
-  music.barFirst = 0 -- first beat of FIRST BAR of the song
-  music.barLast = 0 -- first beat of LAST BAR of the song
-  music.waveform = nil
-  music.waveData = nil
-  music.audioData = nil
-  music.sampleRate = nil
-  music.channels = nil
-  music.filename = ""
+  music.position = music.position or 0
+  music.duration = music.duration or 0
+  music.bars = music.bars or {}
+  music.tempoCurrent = music.tempoCurrent or 0
+  music.tempoAverage = music.tempoAverage or 0
+  music.passage = music.passage or {}
+  music.beatCurrent = music.beatCurrent or 0
+  music.beatsPerBar = music.beatsPerBar or 4
+  music.barTimeElapsed = music.barTimeElapsed or 0
+  music.barFirst = music.barFirst or 0 -- first beat of FIRST BAR of the song
+  music.barLast = music.barLast or 0 -- first beat of LAST BAR of the song
+  music.waveform = music.waveform or nil
+  music.waveData = music.waveData or nil
+  music.audioData = music.audioData or nil
+  music.sampleRate = music.sampleRate or nil
+  music.channels = music.channels or nil
+  music.filename = music.filename or ""
 end
 
 initMusic()
@@ -447,6 +447,22 @@ music.filename = "audio/SEVENTEEN - Sample 2.ogg"
 loadSong(music.filename)
 
 
+-- alpha values to simulate fading
+local keyFinder = {}
+keyFinder.keys = {
+  ['c']  = 0,
+  ['c+'] = 0,
+  ['d']  = 0,
+  ['d+'] = 0,
+  ['e']  = 0,
+  ['f']  = 0,
+  ['f+'] = 0,
+  ['g']  = 0,
+  ['g+'] = 0,
+  ['a']  = 0,
+  ['a+'] = 0,
+  ['b']  = 0,
+}
 
 local colorpalette = {}
 
@@ -822,6 +838,45 @@ function drawMenu()
 end
 
 
+function drawPiano13Keys(x,y)
+  -- draw Piano 13 keys
+  love.graphics.setFont(monoFont)
+  love.graphics.setColor(color.white)
+  love.graphics.print(xtui["piano-13"], x*FONT_WIDTH, y*FONT_HEIGHT)
+
+  -- draw keyFinder note taps
+  love.graphics.setFont(monoFont)
+  love.graphics.setColor(0,1,0,keyFinder.keys['c'])
+  love.graphics.print("██", (x+4)*FONT_WIDTH, (y+12)*FONT_HEIGHT) -- c
+  love.graphics.setColor(0,1,0,keyFinder.keys['c+'])
+  love.graphics.print("██", (x+9)*FONT_WIDTH, ((y+12)*FONT_HEIGHT)-(11*FONT2X_HEIGHT)) -- c+
+  love.graphics.setColor(0,1,0,keyFinder.keys['d'])
+  love.graphics.print("██", (x+14)*FONT_WIDTH, (y+12)*FONT_HEIGHT) -- d
+  love.graphics.setColor(0,1,0,keyFinder.keys['d+'])
+  love.graphics.print("██", (x+19)*FONT_WIDTH, ((y+12)*FONT_HEIGHT)-(11*FONT2X_HEIGHT)) -- d+
+  love.graphics.setColor(0,1,0,keyFinder.keys['e'])
+  love.graphics.print("██", (x+24)*FONT_WIDTH, (y+12)*FONT_HEIGHT) -- e
+  love.graphics.setColor(0,1,0,keyFinder.keys['f'])
+  love.graphics.print("██", (x+34)*FONT_WIDTH, (y+12)*FONT_HEIGHT) -- f
+  love.graphics.setColor(0,1,0,keyFinder.keys['f+'])
+  love.graphics.print("██", (x+39)*FONT_WIDTH, ((y+12)*FONT_HEIGHT)-(11*FONT2X_HEIGHT)) -- f+
+  love.graphics.setColor(0,1,0,keyFinder.keys['g'])
+  love.graphics.print("██", (x+44)*FONT_WIDTH, (y+12)*FONT_HEIGHT) -- g
+  love.graphics.setColor(0,1,0,keyFinder.keys['g+'])
+  love.graphics.print("██", (x+49)*FONT_WIDTH, ((y+12)*FONT_HEIGHT)-(11*FONT2X_HEIGHT)) -- g+
+  love.graphics.setColor(0,1,0,keyFinder.keys['a'])
+  love.graphics.print("██", (x+54)*FONT_WIDTH, (y+12)*FONT_HEIGHT) -- a
+  love.graphics.setColor(0,1,0,keyFinder.keys['a+'])
+  love.graphics.print("██", (x+59)*FONT_WIDTH, ((y+12)*FONT_HEIGHT)-(11*FONT2X_HEIGHT)) -- a+
+  love.graphics.setColor(0,1,0,keyFinder.keys['b'])
+  love.graphics.print("██", (x+64)*FONT_WIDTH, (y+12)*FONT_HEIGHT) -- b
+  love.graphics.setColor(0,1,0,keyFinder.keys['c'])
+  love.graphics.print("██", (x+74)*FONT_WIDTH, (y+12)*FONT_HEIGHT) -- >c
+
+end
+
+
+
 function love.draw()
   -- Your game draw here (from bottom to top layer)
 
@@ -845,34 +900,6 @@ function love.draw()
   love.graphics.printf(game.inputTips, 640+(1*FONT_WIDTH), (29-28)*FONT_HEIGHT, 320, "left")
 
 
-  -- render the ansiArt area
-  drawArtCanvas(selected.textmode, game.bgcolorSelected)
-
-  drawPalette(141, 4)
-
-  -- responsively draw game.statusbar according to cursor position
-  love.graphics.setColor( color.darkgrey )
-  if game.cursory*8 <= math.floor(game.height/2) then
-    -- cursor is in upper screen
-    love.graphics.rectangle("fill", 0, game.height-FONT_HEIGHT, game.width, FONT_HEIGHT)
-    love.graphics.setColor( color.black )
-    love.graphics.setFont(monoFont)
-    love.graphics.print("   "..game.statusbar, 0, game.height-FONT_HEIGHT)
-      -- show selected color and char
-    love.graphics.setColor(selected.color)
-    love.graphics.printf(selected.char, monoFont, FONT_WIDTH, game.height-FONT_HEIGHT, 16, "left")
-
-  else
-    -- cursor is in lower screen
-    love.graphics.rectangle("fill", 0, 0, game.width, FONT_HEIGHT)
-    love.graphics.setColor( color.black )
-    love.graphics.setFont(monoFont)
-    love.graphics.print("   "..game.statusbar, 0, 0)
-    -- show selected color and char
-    love.graphics.setColor(selected.color)
-    love.graphics.printf(selected.char, monoFont, FONT_WIDTH, 0, 16, "left")
-  end
-
 --  if love.keyboard.isDown("lshift") then
     -- draw screen 2 "drawmode"
 --    love.graphics.setFont(monoFont)
@@ -880,14 +907,6 @@ function love.draw()
 --    love.graphics.print(screen2["drawmode"],640, 0)
 --  end
 
-  -- draw cursor
-  love.graphics.setColor( color.pulsingwhite )
-  love.graphics.setLineWidth(1)
-  if selected.textmode == 2 then
-    love.graphics.rectangle( "line" , (game.cursorx-1)*8, (game.cursory-1)*8, FONT2X_WIDTH, FONT2X_HEIGHT)
-  else
-    love.graphics.rectangle( "line" , (game.cursorx-1)*8, (game.cursory-1)*8, FONT_WIDTH, FONT_HEIGHT)
-  end
 
   -- draw viewports (debug only)
   love.graphics.setColor(color.brightcyan)
@@ -921,29 +940,9 @@ function love.draw()
     end
   end
 
-  -- draw buttons
-  drawButtons()
-
-  -- draw hover and click items during "play" mode
-  -- draw hover shadow first
-  if game.mode == "play" then
-    love.graphics.setFont(monoFont)
-    love.graphics.setColor(color.black)
-    love.graphics.print(hover[game.mousex][game.mousey],(game.mousex*FONT2X_WIDTH)+2,((game.mousey+2)*FONT2X_HEIGHT)+2)
-    -- draw hover text
-    love.graphics.setColor(color.white)
-    love.graphics.print(hover[game.mousex][game.mousey],game.mousex*FONT2X_WIDTH,(game.mousey+2)*FONT2X_HEIGHT)
-
-  end
-
-  -- draw click - text message
-  if game.message ~= "" then
-    drawMessage( game.message, game.messageViewport )
-  end
-
   -- draw pointer
-  love.graphics.setColor(color.white)
-  love.graphics.draw(pointer, love.mouse.getX(), love.mouse.getY())
+--  love.graphics.setColor(color.white)
+--  love.graphics.draw(pointer, love.mouse.getX(), love.mouse.getY())
 
   if game.scene == "title" then
     -- draw full screens last
@@ -958,31 +957,28 @@ function love.draw()
     love.graphics.print(screen[1][2],640,0) -- screen 2 foreground
   end
 
-  -- draw Player after everything else (not used now for editing)
-  -- drawPlayer()
-
 	-- draw audio waveform
-  love.graphics.draw(music.waveform, 0, 0)
-
+  love.graphics.setColor(color.white)
+  love.graphics.draw(music.waveform, 0*FONT2X_WIDTH, 2*FONT2X_HEIGHT)
 
   -- draw music playhead position
-  game.tooltip = "Filename: " .. music.filename .. "\nMusic position: " .. music.position
-	music.position = game.music:tell("seconds")
+  game.tooltip = "Filename: " .. music.filename .. "\n"
+  music.position = game.music:tell("seconds")
 	love.graphics.setColor( 1, 0, 0) -- set red color
-	love.graphics.line(0 + imageWidth*(music.position/music.duration) , 0 , 0 + imageWidth*(music.position/music.duration), imageHeight)
+	love.graphics.line(0 + imageWidth*(music.position/music.duration) , 2*FONT2X_HEIGHT , 0 + imageWidth*(music.position/music.duration), (imageHeight+2*FONT2X_HEIGHT))
 	love.graphics.setColor( 1, 1, 1) -- reset to white
 
   -- visualising beats in a bar (needs tidying up)
   love.graphics.setFont(monoFont)
   love.graphics.setColor(color.brightcyan)
-  love.graphics.print(game.tooltip, 0, 6*FONT2X_HEIGHT )
-  love.graphics.print("Bars: " ..#music.bars, 0, 10*FONT2X_HEIGHT)
+  love.graphics.print(game.tooltip, 0, 16*FONT2X_HEIGHT )
+  love.graphics.print("Bars: " ..#music.bars, 0, 18*FONT2X_HEIGHT)
   if #music.bars > 1 then
     local durationBar  = music.bars[#music.bars] - music.bars[#music.bars-1]
     local durationBeat = durationBar / 4 -- assuming 4 beats per bar
     music.tempoCurrent = 60 / durationBeat -- 60 secs per min
     music.tempoAverage = 60 / ((music.bars[#music.bars] - music.bars[1]) / ((#music.bars - 1) * 4))
-    love.graphics.print("Tempo: " .. music.tempoAverage, 0, 12*FONT2X_HEIGHT)
+    love.graphics.print("Tempo: " .. math.floor(music.tempoAverage), 0, 20*FONT2X_HEIGHT)
   end
 
   -- draw bars
@@ -997,17 +993,20 @@ function love.draw()
   end
 
   -- draw 1st bar, calculated bars based on average tempo
-  love.graphics.setColor(color.brightyellow)
-  love.graphics.line(0 + imageWidth*(music.barFirst/music.duration) , 5*FONT2X_HEIGHT , 0 + imageWidth*(music.barFirst/music.duration), 6*FONT2X_HEIGHT)
-  love.graphics.setColor(color.brightcyan)
+  if music.barFirst ~= 0 then
+    love.graphics.setColor(color.brightyellow)
+    love.graphics.line(0 + imageWidth*(music.barFirst/music.duration) , 9*FONT2X_HEIGHT , 0 + imageWidth*(music.barFirst/music.duration), 10*FONT2X_HEIGHT)
+  end
 
   local barsInSong = (math.floor((game.music:getDuration() - music.barFirst) / ((60/music.tempoAverage)*music.beatsPerBar)))
   -- game.music:getDuration() - music.barFirst = (duration of song left to map)
   -- duration of 1 bar = (60/music.tempoAverage)*music.beatsPerBar
   -- number of bars in song = math.floor((game.music:getDuration() - music.barFirst) / ((60/music.tempoAverage)*music.beatsPerBar))
+
+  love.graphics.setColor(color.brightcyan) -- sets color for computed bar slices
   if music.tempoAverage ~= 0 then
     for i = 1, barsInSong do
-      love.graphics.line((imageWidth*(music.barFirst/music.duration))+(imageWidth*((i*(((60/music.tempoAverage)*music.beatsPerBar)/music.duration)))), 5*FONT2X_HEIGHT , (imageWidth*(music.barFirst/music.duration))+(imageWidth*((i*(((60/music.tempoAverage)*music.beatsPerBar)/music.duration)))), 6*FONT2X_HEIGHT)
+      love.graphics.line((imageWidth*(music.barFirst/music.duration))+(imageWidth*((i*(((60/music.tempoAverage)*music.beatsPerBar)/music.duration)))), 9*FONT2X_HEIGHT , (imageWidth*(music.barFirst/music.duration))+(imageWidth*((i*(((60/music.tempoAverage)*music.beatsPerBar)/music.duration)))), 10*FONT2X_HEIGHT)
     end
   end
 
@@ -1024,11 +1023,13 @@ function love.draw()
 --    end
 --  end
 
-  -- draw Piano 13 keys
-  love.graphics.setFont(monoFont)
-  love.graphics.setColor(color.white)
-  love.graphics.print(xtui["piano-13"], 0, 10*FONT_HEIGHT)
+drawPiano13Keys(0,29)
 
+
+  -- draw click - text message (last layer to be on top of everything)
+  if game.message ~= "" then
+    drawMessage( game.message, game.messageViewport )
+  end
 
   -- draw last so that it is on top of everything
   if selected.menuRow ~= 0 then
@@ -1039,6 +1040,16 @@ end
 
 function love.update(dt)
   -- Your game update here
+
+  -- fade out any playing keyfinder note visuals
+  for k,v in pairs(keyFinder.keys) do
+    if v > 0 then
+      keyFinder.keys[k] = keyFinder.keys[k] - dt
+      if keyFinder.keys[k] < 0 then
+        keyFinder.keys[k] = 0
+      end
+    end
+  end
 
   if game.music:isPlaying() then
     music.barTimeElapsed = music.barTimeElapsed + dt
@@ -1180,6 +1191,7 @@ function love.keypressed(key, scancode, isrepeat)
         piano[28]:stop()
       end
       piano[28]:play()
+      keyFinder.keys['c'] = 1
     end
     -- "Left" to play piano note 29
     game.inputTips = game.inputTips .. "Left : Play note - C#\n"
@@ -1188,6 +1200,7 @@ function love.keypressed(key, scancode, isrepeat)
         piano[29]:stop()
       end
       piano[29]:play()
+      keyFinder.keys['c+'] = 1
     end
     -- "Down" to play piano note 30
     game.inputTips = game.inputTips .. "Down : Play note - D\n"
@@ -1196,6 +1209,7 @@ function love.keypressed(key, scancode, isrepeat)
         piano[30]:stop()
       end
       piano[30]:play()
+      keyFinder.keys['d'] = 1
     end
     -- "Right" to play piano note 31
     game.inputTips = game.inputTips .. "Right : Play note - D#\n"
@@ -1204,6 +1218,7 @@ function love.keypressed(key, scancode, isrepeat)
         piano[31]:stop()
       end
       piano[31]:play()
+      keyFinder.keys['d+'] = 1
     end
     -- "T" to play piano note 32
     game.inputTips = game.inputTips .. "T : Play note - E\n"
@@ -1212,6 +1227,7 @@ function love.keypressed(key, scancode, isrepeat)
         piano[32]:stop()
       end
       piano[32]:play()
+      keyFinder.keys['e'] = 1
     end
     -- "F" to play piano note 33
     game.inputTips = game.inputTips .. "F : Play note - F\n"
@@ -1220,6 +1236,7 @@ function love.keypressed(key, scancode, isrepeat)
         piano[33]:stop()
       end
       piano[33]:play()
+      keyFinder.keys['f'] = 1
     end
     -- "G" to play piano note 34
     game.inputTips = game.inputTips .. "G : Play note - F#\n"
@@ -1228,6 +1245,7 @@ function love.keypressed(key, scancode, isrepeat)
         piano[34]:stop()
       end
       piano[34]:play()
+      keyFinder.keys['f+'] = 1
     end
     -- "H" to play piano note 35
     game.inputTips = game.inputTips .. "H : Play note - G\n"
@@ -1236,6 +1254,7 @@ function love.keypressed(key, scancode, isrepeat)
         piano[35]:stop()
       end
       piano[35]:play()
+      keyFinder.keys['g'] = 1
     end
     -- "I" to play piano note 36
     game.inputTips = game.inputTips .. "I : Play note - G#\n"
@@ -1244,6 +1263,7 @@ function love.keypressed(key, scancode, isrepeat)
         piano[36]:stop()
       end
       piano[36]:play()
+      keyFinder.keys['g+'] = 1
     end
     -- "J" to play piano note 37
     game.inputTips = game.inputTips .. "J : Play note - A\n"
@@ -1252,6 +1272,7 @@ function love.keypressed(key, scancode, isrepeat)
         piano[37]:stop()
       end
       piano[37]:play()
+      keyFinder.keys['a'] = 1
     end
     -- "K" to play piano note 38
     game.inputTips = game.inputTips .. "K : Play note - A#\n"
@@ -1260,6 +1281,7 @@ function love.keypressed(key, scancode, isrepeat)
         piano[38]:stop()
       end
       piano[38]:play()
+      keyFinder.keys['a+'] = 1
     end
     -- "L" to play piano note 39
     game.inputTips = game.inputTips .. "L : Play note - B\n"
@@ -1268,6 +1290,7 @@ function love.keypressed(key, scancode, isrepeat)
         piano[39]:stop()
       end
       piano[39]:play()
+      keyFinder.keys['b'] = 1
     end
 
     -- "escape" to quit app
@@ -1527,26 +1550,74 @@ function love.touchpressed(id, x, y, dx, dy, pressure)
 end
 
 
+function getFilenameNoPath(fullname)
+  return fullname:match("([^\\/]+)$") -- just the filename
+end
+
+function isValidFile(filename)
+  local validExtensions = {
+    mp3 = true,
+    wav = true,
+    ogg = true,
+    flac = true,
+    amf = true,
+    ams = true,
+    dbm = true,
+    dmf = true,
+    dsm = true,
+    far = true,
+    it  = true,
+    j2b = true,
+    mdl = true,
+    med = true,
+    mod = true,
+    mt2 = true,
+    mtm = true,
+    okt = true,
+    psm = true,
+    s3m = true,
+    stm = true,
+    ult = true,
+    umx = true,
+    xm  = true,
+  }
+
+  local ext = filename:match("%.([^%.]+)$") -- just the file extension
+  return ext and validExtensions[ext:lower()] or false
+end
+
+
 function love.filedropped(file)
   if file then
-    initMusic()
-    music.filename = file:getFilename()
-    file:open("r")
-    local fileData = file:read("data")
-    music.audioData = love.sound.newSoundData(fileData)
-    music.sampleRate = music.audioData:getSampleRate()
-    music.channels = music.audioData:getChannelCount()
-	  music.duration = music.audioData:getDuration()
-	  -- load the audio file for playback
-	  game.music = love.audio.newSource(music.audioData, "stream")
-    -- Create an image to draw the waveform
-    imageWidth, imageHeight = 640, 48
-    music.waveData = love.image.newImageData(imageWidth, imageHeight)
-    music.waveform = love.graphics.newImage(music.waveData)
-    -- Generate the waveform
-    generateWaveform(imageWidth,imageHeight)
+    if isValidFile(file:getFilename()) then
+      if game.music:isPlaying() then
+        game.music:stop()
+        game.music = nil
+      end
+      music = {} -- clear music table
 
-    file:close()
+      -- when save and load music data is implemented, insert it here
+
+      initMusic()
+      music.filename = getFilenameNoPath(file:getFilename())
+      file:open("r")
+      local fileData = file:read("data")
+      music.audioData = love.sound.newSoundData(fileData)
+      music.sampleRate = music.audioData:getSampleRate()
+      music.channels = music.audioData:getChannelCount()
+	    music.duration = music.audioData:getDuration()
+	    -- load the audio file for playback
+	    game.music = love.audio.newSource(music.audioData, "stream")
+      -- Create an image to draw the waveform
+      imageWidth, imageHeight = 640, 48
+      music.waveData = love.image.newImageData(imageWidth, imageHeight)
+      music.waveform = love.graphics.newImage(music.waveData)
+      -- Generate the waveform
+      generateWaveform(imageWidth,imageHeight)
+      file:close()
+    else
+      game.message= "Invalid file format. Works with .wav .mp3 .ogg .flac and tracker module formats (.amf, .ams, .dbm, .dmf, .dsm, .far, .it, .j2b, .mdl, .med, .mod, .mt2, .mtm, .okt, .psm, .s3m, .stm, .ult, .umx, .xm)"
+    end
   end
 end
 
