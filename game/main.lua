@@ -362,6 +362,17 @@ end
 -- init music data table
 local music = {}
 
+music.recording = love.audio.newQueueableSource( 44100, 16, 1, 8 )
+
+music.recordingDevice = 0
+local devices = love.audio.getRecordingDevices()
+if #devices == 0 then
+  print("No recording devices found.")
+else
+  music.recordingDevice = devices[1]
+end
+music.recordingTimer = 0
+
 function initMusic()
 
   music.position = music.position or 0
@@ -407,7 +418,13 @@ function generateWaveform(imageWidth,imageHeight)
         local amplitude = sum / music.channels
         local y = math.floor((1 - amplitude / maxAmplitude) * imageHeight / 2)
 
+        -- possibly when there's audio clipping (too loud), hardcoding numbers for now
+        if y < 1 then
+          y = 1
+        end
+
         for i = y, imageHeight - y do
+            print("x:"..x.."y:"..i)
             music.waveData:setPixel(x, i, 1, 1, 1, 1)
         end
     end
@@ -1025,6 +1042,16 @@ function love.draw()
 --    end
 --  end
 
+-- draw recording timer bar
+if music.recordingDevice:isRecording() then
+  love.graphics.setColor(0,1,0,0.5)
+  love.graphics.setLineWidth(1)
+  if music.recordingTimer > 30 then
+    music.recordingTimer = 30
+  end
+  love.graphics.rectangle("fill",0,2*FONT2X_HEIGHT,640*(music.recordingTimer/30),3*FONT_HEIGHT)
+end
+
 drawPiano13Keys(0,29)
 
 
@@ -1042,6 +1069,45 @@ end
 
 function love.update(dt)
   -- Your game update here
+
+  -- add to recording queue if recording started
+--  if music.recordingDevice:isRecording() then
+--    local data = music.recordingDevice:getData( ) -- copies data from ring buffer and clear buffer
+--    if data then
+--      print("queuing sound data..." .. soundData:getSize())
+--    end
+--  end
+
+  -- recording timer and autostop
+  if music.recordingDevice:isRecording() then
+    music.recordingTimer = music.recordingTimer + dt
+  end
+  if music.recordingTimer > 30 then
+    -- stop recording automatically
+    data = music.recordingDevice:getData()
+    if data then
+
+      music.filename = "Recording"
+      music.audioData = data
+      music.sampleRate = data:getSampleRate()
+      music.channels = data:getChannelCount()
+  	  music.duration = data:getDuration()
+  	  -- load the audio file for playback
+  	  game.music = love.audio.newSource(data, "static")
+      -- Create an image to draw the waveform
+      imageWidth, imageHeight = 640, 48
+      music.waveData = love.image.newImageData(imageWidth, imageHeight)
+      music.waveform = love.graphics.newImage(music.waveData)
+      -- Generate the waveform
+      generateWaveform(imageWidth,imageHeight)
+
+    end
+
+    music.recordingDevice:stop()
+    print("Recording Device stopped")
+    music.recordingTimer = 0
+  end
+
 
   -- fade out any playing keyfinder note visuals
   for k,v in pairs(keyFinder.keys) do
@@ -1190,6 +1256,42 @@ function love.keypressed(key, scancode, isrepeat)
     game.inputTips = game.inputTips .. "esc : quit the app\n"
     if key == "escape" then
       love.event.quit()
+    end
+
+    -- if device has recording ability, show recording options
+    if music.recordingDevice ~= 0 then
+      -- "g" to start/stop recording
+      game.inputTips = game.inputTips .. "g : start / stop a 30 sec recording\n"
+      if key == "g" and not music.recordingDevice:isRecording( ) then
+        print("Recording Device started")
+        music.recordingTimer = 0
+        local timeLimit = 30 -- in seconds
+        music.recordingDevice:start(44100*timeLimit, 44100, 16, 1) -- limit rec duration
+      elseif key == "g" and music.recordingDevice:isRecording( ) then
+        data = music.recordingDevice:getData()
+        if data then
+
+          music.filename = "Recording"
+          music.audioData = data
+          music.sampleRate = data:getSampleRate()
+          music.channels = data:getChannelCount()
+  	      music.duration = data:getDuration()
+  	      -- load the audio file for playback
+  	      game.music = love.audio.newSource(data, "static")
+          -- Create an image to draw the waveform
+          imageWidth, imageHeight = 640, 48
+          music.waveData = love.image.newImageData(imageWidth, imageHeight)
+          music.waveform = love.graphics.newImage(music.waveData)
+          -- Generate the waveform
+          generateWaveform(imageWidth,imageHeight)
+
+        end
+
+        music.recordingDevice:stop()
+        print("Recording Device stopped")
+
+      end
+
     end
 
   end
