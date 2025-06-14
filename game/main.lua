@@ -443,7 +443,7 @@ function loadSong(fileName)
 end
 
 -- hardcode music filename for testing
-music.filename = "audio/SEVENTEEN - Sample 2.ogg"
+music.filename = "samples/Sample_BeeMoved.ogg"
 loadSong(music.filename)
 
 
@@ -566,6 +566,8 @@ end
 function love.load()
   -- Your game load here
 
+  game.message = "Tempo Mapper (Early Access) - press Enter to continue"
+
   -- piano
   piano = {
     [28] = love.audio.newSource("samples/piano28.ogg", "static"),
@@ -600,7 +602,7 @@ function love.load()
 
   -- xtui screens using monoFont
   xtui = {}
-  xtui["piano-13"] = json.decode(love.filesystem.read("ansiart/0-piano-13keys.xtui"))
+  xtui["piano-13"] = json.decode(love.filesystem.read("xtui/0-piano-13keys.xtui"))
 
   -- [scene number][screen 1,screen 2,screen 1 bgcolor, screen 2 bgcolor]
   screen = {}
@@ -1150,7 +1152,7 @@ function love.keypressed(key, scancode, isrepeat)
       music.barFirst = 0
       music.barLast = 0
     end
-    -- "S" to quit app
+    -- "S" to start / pause music
     game.inputTips = game.inputTips .. "s : start or pause music\n"
     if key == "s" then
       if game.music:isPlaying() then
@@ -1161,7 +1163,7 @@ function love.keypressed(key, scancode, isrepeat)
         game.music:play()
       end
     end
-    -- "A" to quit app
+    -- "A" to rewind 2 secs
     game.inputTips = game.inputTips .. "a : move back 2 seconds\n"
     if key == "a" then
       if music.position - 2 >= 0 then
@@ -1172,7 +1174,7 @@ function love.keypressed(key, scancode, isrepeat)
         game.music:seek(music.position)
       end
     end
-    -- "D" to quit app
+    -- "D" to forward 2 secs
     game.inputTips = game.inputTips .. "d : move forward 2 seconds\n"
     if key == "d" then
       if music.position + 2 <= game.music:getDuration() then
@@ -1183,6 +1185,18 @@ function love.keypressed(key, scancode, isrepeat)
         game.music:seek(music.position)
       end
     end
+
+    -- "escape" to quit app
+    game.inputTips = game.inputTips .. "esc : quit the app\n"
+    if key == "escape" then
+      love.event.quit()
+    end
+
+  end
+
+  -- Inputs for "KeyFinder"
+  if game.scene == "KeyFinder" then
+    game.inputTips = "" -- init inputTips
 
     -- "Up" to play piano note 28
     game.inputTips = game.inputTips .. "Up : Play note - C\n"
@@ -1293,12 +1307,6 @@ function love.keypressed(key, scancode, isrepeat)
       keyFinder.keys['b'] = 1
     end
 
-    -- "escape" to quit app
-    game.inputTips = game.inputTips .. "esc : quit the app\n"
-    if key == "escape" then
-      love.event.quit()
-    end
-
   end
 
   print("key:"..key.." scancode:"..scancode.." isrepeat:"..tostring(isrepeat))
@@ -1335,122 +1343,6 @@ function love.keypressed(key, scancode, isrepeat)
       selected.menuOption = 2
     end
   end
-
-  -- "lshift" button L4 for quicksave
-  if key == "lshift" then
-    local files = love.filesystem.getDirectoryItems( "quicksave" )
-    saveData("quicksave_"..(#files)..".xtui","quicksave") -- running numbers for quicksaves
-    game.message = "Quicksaved - " .. "quicksave_"..(#files)..".xtui"
-  end
-
-  -- R4 button "pageup" + arrow keys to change canvas size
-  if love.keyboard.isDown("pageup") then
-    -- arrow keys to select char
-    if key == "up" and game.canvasy > 1 then
-      game.canvasy = game.canvasy - 1
-    end
-    if key == "down" and game.canvasy < 60 then
-      game.canvasy = game.canvasy + 1
-    end
-    if key == "left" and game.canvasx > 1 then
-      game.canvasx = game.canvasx - 1
-    end
-    if key == "right" and game.canvasx < 80 then
-      game.canvasx = game.canvasx + 1
-    end
-  end
-
-  -- "tab" to change textmode
-  if key == "tab" then
-    if selected.textmode == 2 then
-      selected.textmode = 1
-      print(game.cursory)
-      game.cursory = (game.cursory * 2) - 1
-      print(game.cursory)
-    else
-      selected.textmode = 2
-      print(game.cursory)
-      game.cursory = math.ceil(game.cursory / 2)
-      print(game.cursory)
-    end
-  end
-
-  -- "lalt + arrows" to select char
-  if love.keyboard.isDown("lalt") then
-    -- arrow keys to select char
-    if key == "up" and game.chary > 1 then
-      game.chary = game.chary - 1
-      selected.char = charTable[game.chary][game.charx]
-    end
-    if key == "down" and game.chary < 17 then
-      game.chary = game.chary + 1
-      selected.char = charTable[game.chary][game.charx]
-    end
-    if key == "left" and game.charx > 1 then
-      game.charx = game.charx - 1
-      selected.char = charTable[game.chary][game.charx]
-    end
-    if key == "right" and game.charx < 11 then
-      game.charx = game.charx + 1
-      selected.char = charTable[game.chary][game.charx]
-    end
-  end
-
-  -- input while textmode == 2
-  if selected.textmode == 2 then
-
-    -- move cursor when R1 ("lalt") is not held and not menu selection
-    if not(love.keyboard.isDown("lalt")) and selected.menuRow == 0 then
-      if key == "up" and game.cursory > 1 then
-        game.cursory = game.cursory - 1
-      end
-      if key == "down" and game.cursory < game.canvasy then
-        game.cursory = game.cursory + 1
-      end
-      if key == "left" and game.cursorx > 1 then
-        game.cursorx = game.cursorx - 1
-      end
-      if key == "right" and game.cursorx < game.canvasx then
-        game.cursorx = game.cursorx + 1
-      end
-    end
-
-    -- draw char at cursor
-    if key == "return" and game.message == "" then
-      ansiArt[game.cursory][(game.cursorx*2)-1] = selected.color
-      ansiArt[game.cursory][game.cursorx*2] = selected.char
-    end
-
-  end
-
-  -- input while textmode == 1
-  if selected.textmode == 1 then
-
-    -- move cursor when R1 ("lalt") is not held, and not menu selection
-    if not(love.keyboard.isDown("lalt")) and selected.menuRow == 0 then
-      if key == "up" and game.cursory > 1 then
-        game.cursory = game.cursory - 2
-      end
-      if key == "down" and game.cursory < ((game.canvasy-1)*2) then
-        game.cursory = game.cursory + 2
-      end
-      if key == "left" and game.cursorx > 1 then
-        game.cursorx = game.cursorx - 1
-      end
-      if key == "right" and game.cursorx < (game.canvasx) then
-        game.cursorx = game.cursorx + 1
-      end
-    end
-
-    -- draw char at cursor
-    if key == "return" and game.message == "" then
-      ansiArt[math.ceil(game.cursory/2)][(game.cursorx*2)-1] = selected.color
-      ansiArt[math.ceil(game.cursory/2)][game.cursorx*2] = selected.char
-    end
-
-  end
-
-
 
   -- use A button "return" to clear game messages
   if game.message ~= "" then
