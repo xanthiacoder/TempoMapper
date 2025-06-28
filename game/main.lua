@@ -396,9 +396,6 @@ end
 
 initMusic()
 
-
-
-
 -- creates audio waveform image
 function generateWaveform(imageWidth,imageHeight)
     local samples = music.audioData:getSampleCount()
